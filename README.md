@@ -13,5 +13,6 @@ This repository contains writeups of all the CTF challenges that I have complete
 | No. | Challenge | Category |
 |-----|------------------|----------------------|
 | 1.	| [flag_shop](https://github.com/joelczk/CTF/blob/main/PicoGym/write-ups/flag_shop.md/)|General skills|
-| 1.	| [plumbing](https://github.com/joelczk/CTF/blob/main/PicoGym/write-ups/plumbing.md/)|General skills|
-
+| 2.	| [plumbing](https://github.com/joelczk/CTF/blob/main/PicoGym/write-ups/plumbing.md/)|General skills|
+| 3.	| [Some Assembly Required 1](https://github.com/joelczk/CTF/blob/main/PicoGym/write-ups/assembly1.md/)|Web|
+| 3.	| [Where are the robots](https://github.com/joelczk/CTF/blob/main/PicoGym/write-ups/robots.md)|Web|
