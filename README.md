@@ -11,5 +11,5 @@ This repository contains writeups of all the CTF challenges that I have complete
 
 ## PicoGym
 | No. | Challenge | Category |
-|-----|--------------|------------------|
+|-----|------------------|----------------------|
 | 1.	| [Access](https://www.test.com/)|Windows|
