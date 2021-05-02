@@ -5,8 +5,10 @@ There's a flag shop selling stuff, can you buy a flag? Connect with nc jupiter.c
 
 ## Solution
 1. Reading the source code, we notice that this might be an integer overflow problem. If we entered a sufficiently large number for `number_flags`, `total_cost` might potentially be overflowed.
+
 ![Image of source code](https://github.com/joelczk/CTF/blob/main/PicoGym/images/flag_shop/code.PNG)
 2. Compiling and testing on our local machine, we realised that giving a sufficiently large number for `number_flags` will give a negative value for `total_cost`.We also realised that we will have a value greater than 10000 for our balance, which shows that the exploit has been successful.
+
 ![Image of overflow](https://github.com/joelczk/CTF/blob/main/PicoGym/images/flag_shop/overflow.PNG)
 3. Now, we will run this exploit on the remote machine to get the flag.
 
