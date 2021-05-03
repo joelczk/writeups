@@ -2,11 +2,11 @@
 
 This repository contains writeups of all the CTF challenges that I have completed.
 
-## HTB
+## HTB Challenges
 
-| No. | Machine Name | Operating System | Difficulty |
+| No. | Challenge | Category | Difficulty |
 |-----|--------------|------------------|------------------|
-| 1.	| [Access](https://www.test.com/)|Windows|Easy|
+| 1.	| [Templated](https://github.com/joelczk/CTF/blob/main/HTB/templated.md)|Web|Easy|
 
 
 ## PicoGym
