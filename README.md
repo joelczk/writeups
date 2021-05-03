@@ -7,6 +7,7 @@ This repository contains writeups of all the CTF challenges that I have complete
 | No. | Challenge | Category | Difficulty |
 |-----|--------------|------------------|------------------|
 | 1.	| [Templated](https://github.com/joelczk/CTF/blob/main/HTB/templated.md)|Web|Easy|
+| 2.	| [Looking Glass](https://github.com/joelczk/CTF/blob/main/HTB/looking_glass.md)|Web|Easy|
 
 
 ## PicoGym
