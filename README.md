@@ -20,3 +20,7 @@ This repository contains writeups of all the CTF challenges that I have complete
 | 4.	| [Some Assembly Required 2](https://github.com/joelczk/CTF/blob/main/PicoGym/write-ups/assembly2.md)|Web|
 | 5.	| [Where are the robots](https://github.com/joelczk/CTF/blob/main/PicoGym/write-ups/robots.md)|Web|
 | 6.	| [Extensions](https://github.com/joelczk/CTF/blob/main/PicoGym/write-ups/extensions.md)|Forensics|
+
+## VulnHub
+| No. | Challenge | Category |
+|-----|------------------|----------------------|
