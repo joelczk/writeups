@@ -23,5 +23,5 @@ This repository contains writeups of all the CTF challenges that I have complete
 
 ## VulnHub
 | No. | Challenge | Writeup |
-|-----|------------------|
-| 1.	| [kioptix1](Kioptrix: Level 1 (#1): https://www.vulnhub.com/entry/kioptrix-level-1-1,22/)|[kioptrix1 writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptix1.pdf)|
+|-----|------------------|----------------------|
+| 1.	| [kioptix1](https://www.vulnhub.com/entry/kioptrix-level-1-1,22/)|[kioptrix1 writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptix1.pdf)|
