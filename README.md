@@ -30,4 +30,4 @@ This repository contains writeups of all the CTF challenges that I have complete
 ## Proving Groungs Writeup
 | No. | Challenge | Writeup |
 |-----|------------------|----------------------|
-| 1.	|Funbox Rookie|[kioptrix1 writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptix1.pdf)|
+| 1.	|Funbox Rookie|[WriteUp]https://github.com/joelczk/writeups/blob/main/Proving%20Grounds/Funbox%20Rookie.md)|
