@@ -2,7 +2,7 @@
 
 This repository contains writeups of all the CTF challenges that I have completed.
 
-## HTB Challenges
+## HTB
 
 | No. | Challenge | Category | Difficulty |
 |-----|--------------|------------------|------------------|
@@ -26,3 +26,7 @@ This repository contains writeups of all the CTF challenges that I have complete
 |-----|------------------|----------------------|
 | 1.	| [kioptix1](https://www.vulnhub.com/entry/kioptrix-level-1-1,22/)|[kioptrix1 writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptix1.pdf)|
 | 1.	| [kioptix1.2](https://www.vulnhub.com/entry/kioptrix-level-12-3,24/)|[kioptrix1.2 writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptrix1.2.pdf)|
+
+## Proving Groungs Writeup
+| No. | Challenge | Writeup |
+| 1.	| Funbox Rookie |[kioptrix1 writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptix1.pdf)|
