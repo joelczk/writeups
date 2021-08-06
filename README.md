@@ -24,10 +24,10 @@ This repository contains writeups of all the CTF challenges that I have complete
 ## VulnHub
 | No. | Challenge | Writeup |
 |-----|------------------|----------------------|
-| 1.	| [kioptix1](https://www.vulnhub.com/entry/kioptrix-level-1-1,22/)|[kioptrix1 writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptix1.pdf)|
-| 1.	| [kioptix1.2](https://www.vulnhub.com/entry/kioptrix-level-12-3,24/)|[kioptrix1.2 writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptrix1.2.pdf)|
+| 1.	| [kioptix1](https://www.vulnhub.com/entry/kioptrix-level-1-1,22/)|[Writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptix1.pdf)|
+| 1.	| [kioptix1.2](https://www.vulnhub.com/entry/kioptrix-level-12-3,24/)|[Writeup](https://github.com/joelczk/CTF/blob/main/VulnHub/kioptrix1.2.pdf)|
 
 ## Proving Groungs Writeup
 | No. | Challenge | Writeup |
 |-----|------------------|----------------------|
-| 1.	|Funbox Rookie|[WriteUp]https://github.com/joelczk/writeups/blob/main/Proving%20Grounds/Funbox%20Rookie.md)|
+| 1.	|Funbox Rookie|[WriteUp](https://github.com/joelczk/writeups/blob/main/Proving%20Grounds/Funbox%20Rookie.md)|
