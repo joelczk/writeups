@@ -1,5 +1,5 @@
 ## Default Information
-IP address : 10.10.10.245
+IP address : 10.10.10.245/
 Operating System : Linux
 
 ## Enumeration
