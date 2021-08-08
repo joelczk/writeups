@@ -1,6 +1,6 @@
 ## Default Information
-IP address : 10.10.10.242
-Operating system : Linux
+IP address : 10.10.10.242\
+Operating system : Linux\
 
 ## Enumeration
 Lets start with running a network scan on the IP address using ```NMAP``` to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
