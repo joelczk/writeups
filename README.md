@@ -11,7 +11,7 @@ This repository contains writeups of all the CTF challenges that I have complete
 | 3.	| [fs0ciety](https://github.com/joelczk/CTF/blob/main/HTB/fsociety.md)|Misc|Easy|
 | 4.	| [Lame](https://github.com/joelczk/writeups/blob/main/HTB/Lame.md)|Machine|Easy|
 | 5.	| [Knife](https://github.com/joelczk/writeups/blob/main/HTB/Knife.md)|Machine|Easy|
-
+| 6.	| [Cap](https://github.com/joelczk/writeups/blob/main/HTB/Cap.md)|Machine|Easy|
 
 ## PicoGym
 | No. | Challenge | Category |
