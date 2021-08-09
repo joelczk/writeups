@@ -55,7 +55,7 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 /js                   (Status: 301) [Size: 309] [--> http://10.10.11.100/js/]       
                                     
 ```
-We realise that ```/js```, ```/css``` and ```/assets``` returns a status code of 403, but ```/resources``` returns a status code of 200. Visiting ```/resources```, we can see the following from the website:
+We realise that ```/js```, ```/css``` and ```/assets``` returns a status code of 301, but ```/resources``` returns a status code of 200. Visiting ```/resources```, we can see the following from the website:
 
 ![Resources page](https://github.com/joelczk/writeups/blob/main/HTB/Images/bountyhunter_resources.PNG)
 
