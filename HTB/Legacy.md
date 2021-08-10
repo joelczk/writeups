@@ -316,3 +316,7 @@ type root.txt
 <Redacted system flag>
 C:\Documents and Settings\Administrator\Desktop>
 ```
+
+## Final remarks
+* This exploit took me longer than usual to complete as I was trying to find out the metasploit and the non-metasploit way of exploiting the machine. The non-metasploit way of exploitation (```CVE-2017-0143```) might take a longer time to find the correct repo to use as not all repos can carry out the exploit successfully.
+* During the process of doing this exploit, the machine does get buggy at times and the exploit might not be able to work (i.e. unable to spawn a reverse shell from the victim machine etc.). In such scenarios, all you have to do is to reset the machine and the exploit will work as normal. 
