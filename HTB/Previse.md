@@ -19,7 +19,7 @@ From the output of ```NMAP```, we can identify the following information about t
 
 
 ## Discovery
-Visit http://10.129.214.218. Using ```Wapplyzer```, we discover the following information
+Visit http://10.10.11.104. Using ```Wapplyzer```, we discover the following information
 ```code
 Web servers : Apache 2.4.29
 Operating systems : Ubuntu
@@ -59,7 +59,7 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 /config.php           (Status: 200) [Size: 0]
 /logs.php             (Status: 302) [Size: 0] [--> login.php]
 ```
-Navigate to http://10.129.214.218/nav.php, we are able to view a few hyperlinks. However, we notice that all of the links in this page redirect us to the ```login.php``` page. This tells us that we will first have to login before we can view the pages.
+Navigate to http://10.10.11.104/nav.php, we are able to view a few hyperlinks. However, we notice that all of the links in this page redirect us to the ```login.php``` page. This tells us that we will first have to login before we can view the pages.
 ![Image of nav.php](https://github.com/joelczk/writeups/blob/main/HTB/Images/Previse/nav_php.PNG )
 
 Next, we will intercept the request made to ```CREATE ACCOUNT``` on the ```nav.php``` page using Burp Suite.
