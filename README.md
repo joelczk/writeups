@@ -14,6 +14,7 @@ This repository contains writeups of all the CTF challenges that I have complete
 | 6.	| [Cap](https://github.com/joelczk/writeups/blob/main/HTB/Cap.md)|Machine|Easy|
 | 7.	| [Bounty Hunter](https://github.com/joelczk/writeups/blob/main/HTB/Bounty%20Hunter.md)|Machine|Easy|
 | 8.	| [Legacy](https://github.com/joelczk/writeups/blob/main/HTB/Legacy.md)|Machine|Easy|
+| 9.  | [Previse](https://github.com/joelczk/writeups/blob/main/HTB/Previse.md)|Machine|Easy|
 
 ## PicoGym
 | No. | Challenge | Category |
