@@ -149,4 +149,17 @@ Let's now try to access ```/seeddms51x/seeddms``` on the web server.
 * ```https://pit.htb:9090/seeddms51x/seeddms``` just returns a CentOS admin login page
 *  ```http://dms-pit.htb/seeddms51x/seeddms/``` redirects us to a login page
 
-However, we do not know the credentials to login to the SeedDMS. First we try to use the default username and password of ```admin``` to login to SeedDMS, but it seems that this username-password combination is invalid. Now, we will try to brute force login into the webpage using ```rockyou.txt``` file
+However, we do not know the credentials to login to the SeedDMS. First we try to use the default username and password of ```admin``` to login to SeedDMS, but it seems that this username-password combination is invalid. Now, we will try to brute force login into the webpage using ```rockyou.txt``` file as the password file for the 2 users that we have discovered earlier \
+Using intruder, we will bruteforce all the username-password combinations using clusterbomb mode. We would then realize that the password is also ```michelle``` as we are redirected to an internal URL in the response
+```
+HTTP/1.1 302 Found
+Server: nginx/1.14.1
+Date: Sun, 15 Aug 2021 19:31:18 GMT
+Content-Type: text/html; charset=UTF-8
+Connection: close
+X-Powered-By: PHP/7.2.24
+Set-Cookie: mydms_session=30bc74de3d5d3f515046b817c127d006; path=/seeddms51x/seeddms/; HttpOnly
+Location: /seeddms51x/seeddms/out/out.ViewFolder.php?folderid=1
+Content-Length: 0
+```
+Logging into the site using the discovered credentials, we were able to find a ```CHANGELOG``` file that tells use that the SeedDMS is version ```5.1.15```. We will then look for exploits related to SeedDMS 5.1.15 using exploitDB.
