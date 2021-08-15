@@ -77,8 +77,11 @@ From the output of ```NMAP```, we are able to obtain the following information a
 | 34862	| unknown | admin-prohibited | Open |
 
 ## Discovery
-Visiting ```http://dms-pit.htb```, we are greeted with a status code of 403 which means that the webpage exists but we are not authorized to view it. 
-Visiting ```http://pit.htb:80```, we are greeted with a test page for Nginx HTTP Server on Red Hat Enterprise Linux and visiting ```https://pit.htb:9090```, we are greeted with an admin page of CentOS.
+Lets now visit the web server and observe what happens
+* ```http://dms-pit.htb``` returns a status code of 403 which means that the webpage exists but we are not authorized to view it. 
+* ```http://pit.htb:80``` returns a test page for Nginx HTTP Server on Red Hat Enterprise Linux 
+* ```https://pit.htb:9090``` returns an admin page for CentOS
+
 Next, we will run whatweb on the 3 URLs, and we observed that the whatweb output for ```https://pit.htb:9090``` contains ```cockpit```, which is a GUI made for sysadmins.
 ```
 ┌──(kali㉿kali)-[~]
@@ -108,11 +111,10 @@ URL_BASE: https://pit.htb:9090/
 WORDLIST_FILES: /usr/share/dirb/wordlists/common.txt
 
 -----------------
-
-                                                                             GENERATED WORDS: 4612
+GENERATED WORDS: 4612
 
 ---- Scanning URL: https://pit.htb:9090/ ----
-                                                                             + https://pit.htb:9090/favicon.ico (CODE:200|SIZE:819)                      
++ https://pit.htb:9090/favicon.ico (CODE:200|SIZE:819)                      
 + https://pit.htb:9090/ping (CODE:200|SIZE:24)                              
                                                                                
 -----------------
@@ -125,3 +127,26 @@ Public community string is a default community string and is used as a password 
 ```
 NMPv1 server; net-snmp SNMPv3 server (public)
 ```
+
+Next, we will use ```snmpwalk``` to enumerate all the information on the SNMP server. The information that is outputted is very massive so we will redirect all the input into a file.
+```
+snmpwalk -v 1 -c public 10.10.10.241 .1 > snmp    
+```
+Analyzing the file, we are able to discover a few interesting information such as the existence of a directory ```/var/www/html/seeddms51x/seeddms```, which may be accessible from the website as well as, several credentials 
+```
+## Suspicious directory (might be accessible from the web server)
+iso.3.6.1.4.1.2021.9.1.2.2 = STRING: "/var/www/html/seeddms51x/seeddms"
+## Credentials on SNMP server
+Login Name           SELinux User         MLS/MCS Range        Service
+
+__default__          unconfined_u         s0-s0:c0.c1023       *
+michelle             user_u               s0                   *
+root                 unconfined_u         s0-s0:c0.c1023       *
+```
+
+Let's now try to access ```/seeddms51x/seeddms``` on the web server.
+* ```http://pit.htb/seeddms51x/seeddms``` returns a Nginx error on the webpage
+* ```https://pit.htb:9090/seeddms51x/seeddms``` just returns a CentOS admin login page
+*  ```http://dms-pit.htb/seeddms51x/seeddms/``` redirects us to a login page
+
+However, we do not know the credentials to login to the SeedDMS. First we try to use the default username and password of ```admin``` to login to SeedDMS, but it seems that this username-password combination is invalid. Now, we will try to brute force login into the webpage using ```rockyou.txt``` file
