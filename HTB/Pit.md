@@ -10,10 +10,10 @@ Firstly, let us enumerate all the open ports using ```Nmap```
 * -p- : scan all ports
 
 ```bash
-nmap -sC -sV -A -p- -T4 10.10.10.241 -Pn -vv
+nmap -sC -sV -A -p- -T4 10.10.10.241 -vv
 ```
 
-From the output of ```NMAP```, we are able to obtain the following information about the open ports:
+From the output of ```NMAP```, we are able to obtain the following information about the open TCP ports:
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
 | 22	| SSH | OpenSSH 8.0 (protocol 2.0) | Open |
@@ -68,6 +68,13 @@ Now, we will do a scan on the UDP ports to find any possible open UDP ports
 ```
 sudo nmap -sU -Pn 10.10.10.241 -T4 -vv 
 ```
+From the output of ```NMAP```, we are able to obtain the following information about the open UDP ports
+| Port Number | Service | Version | State |
+|-----|------------------|----------------------|----------------------|
+| 161	| snmp | NMPv1 server; net-snmp SNMPv3 server (public) | Open |
+| 593	| http-rpc-epmap | admin-prohibited | Open |
+| 17455	| unknown | admin-prohibited | Open |
+| 34862	| unknown | admin-prohibited | Open |
 
 ## Discovery
 Visiting ```http://dms-pit.htb```, we are greeted with a status code of 403 which means that the webpage exists but we are not authorized to view it. 
@@ -85,4 +92,36 @@ http://pit.htb:80 [200 OK] Country[RESERVED][ZZ], HTTPServer[nginx/1.14.1], IP[1
 ┌──(kali㉿kali)-[~]
 └─$ whatweb http://dms-pit.htb
 http://dms-pit.htb/ [403 Forbidden] Country[RESERVED][ZZ], HTTPServer[nginx/1.14.1], IP[10.10.10.241], Title[403 Forbidden], nginx[1.14.1]   
+```
+Directory enumeration with ```dirb``` on ```pit.htb:9090``` returns some meaningful output. However, upon furthur investigation they are not exploitable.
+```
+┌──(kali㉿kali)-[~]
+└─$ dirb https://pit.htb:9090
+
+-----------------
+DIRB v2.22    
+By The Dark Raver
+-----------------
+
+START_TIME: Sun Aug 15 10:38:54 2021
+URL_BASE: https://pit.htb:9090/
+WORDLIST_FILES: /usr/share/dirb/wordlists/common.txt
+
+-----------------
+
+                                                                             GENERATED WORDS: 4612
+
+---- Scanning URL: https://pit.htb:9090/ ----
+                                                                             + https://pit.htb:9090/favicon.ico (CODE:200|SIZE:819)                      
++ https://pit.htb:9090/ping (CODE:200|SIZE:24)                              
+                                                                               
+-----------------
+END_TIME: Sun Aug 15 11:37:22 2021
+DOWNLOADED: 4612 - FOUND: 2
+```
+
+From the previous ```NMAP``` scan, we know that port 161 is running on SNMP server and it is using a Public community string for authentication. 
+Public community string is a default community string and is used as a password to access the SNMP server. However, this public string only allows users to have read access but not write access.
+```
+NMPv1 server; net-snmp SNMPv3 server (public)
 ```
