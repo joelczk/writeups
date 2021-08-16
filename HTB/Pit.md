@@ -162,4 +162,37 @@ Set-Cookie: mydms_session=30bc74de3d5d3f515046b817c127d006; path=/seeddms51x/see
 Location: /seeddms51x/seeddms/out/out.ViewFolder.php?folderid=1
 Content-Length: 0
 ```
-Logging into the site using the discovered credentials, we were able to find a ```CHANGELOG``` file that tells use that the SeedDMS is version ```5.1.15```. We will then look for exploits related to SeedDMS 5.1.15 using exploitDB.
+Logging into the site using the discovered credentials, we were able to find a know that the version of SeedDMS used is version ```5.1.15```. We will then look for exploits related to SeedDMS 5.1.15 using exploitDB. We are also able to find a ```CHANGELOG``` file, but the file does not provide any information that points to any possible exploitation.
+```
+Dear colleagues, Because of security issues in the previously installed version (5.1.10), I upgraded SeedDMS to version 5.1.15. See the attached CHANGELOG file for more information. If you find any issues, please report them immediately to admin@dms-pit.htb
+```
+
+Searching for the potential CVEs for SeedDMS, we were able to find an exploit for CVE-2019-12744 on exploitDB. Even though, this is an exploit for SeedDMS < 5.1.11, we decided to give it a try anyways. This exploit provides us with a php file that we could potentially upload and carry out remote code execution attacks. Moving through the pages, we are also able to discover a webpage to upload documents ```http://dms-pit.htb/seeddms51x/seeddms/out/out.AddDocument.php?folderid=8&showtree=1```
+
+![Uploading backdoor to the web server](https://github.com/joelczk/writeups/blob/main/HTB/Images/Pit/uploading_backdoor.PNG)
+
+After uploading the file, we will be able to obtain our ```documentid``` and we will be able to access the uploaded file at ```http://dms-pit.htb/seeddms/data/1048576/<documentid>/1.php```. This is a bit challenging to do as the uploaded file will be deleted within a fixed time interval. Afterwards, we will create a POC to obtain the ```/etc/passwd``` file from the uploaded backdoor.
+
+![Creating the POC](https://github.com/joelczk/writeups/blob/main/HTB/Images/Pit/POC.PNG)
+
+Next,we will try to do a reverse shell back to our attacking machine. However, this time round the exploit seems to have failed (Probably due to some WAF filtering). So, what we do next is to traverse through the directory to find for more information. Thankfully, we were able to find ```/var/www/html/seeddms51x/data/conf/settings.xml```. However, viewing it on the website only provides us with a few text that looks like some Ubuntu command. However, what was weird was that there was the highlighting of the empty spaces on the website when we try to highlight the webpage. This got me thinking that there may be some hidden chracters not shown on the webpage itself.
+
+![Viewing weird encoding on the website](https://github.com/joelczk/writeups/blob/main/HTB/Images/Pit/weird_encoding.PNG)
+
+Next, I try to view the source code of the webpage and was able to find the full ```settings.xml``` file. From the file, I was able to pick up some database credentials that may be useful.
+```
+    <!--
+       - dbDriver: DB-Driver used by adodb (see adodb-readme)
+       - dbHostname: DB-Server
+       - dbDatabase: database where the tables for seeddms are stored (optional - see adodb-readme)
+       - dbUser: username for database-access
+       - dbPass: password for database-access
+    -->    
+    <database dbDriver="sqlite" dbHostname="localhost" dbDatabase="/home/www-data/seeddms51x/data/content.db" dbUser="seeddms" dbPass="seeddms" doNotCheckVersion="false">
+    </database>
+    <!-- smtpServer: SMTP Server hostname
+       - smtpPort: SMTP Server port
+       - smtpSendFrom: Send from
+    -->    
+    <smtp smtpServer="localhost" smtpPort="25" smtpSendFrom="seeddms@localhost" smtpUser="" smtpPassword=""/>   
+```
