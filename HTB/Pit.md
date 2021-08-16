@@ -179,7 +179,7 @@ Next,we will try to do a reverse shell back to our attacking machine. However, t
 
 ![Viewing weird encoding on the website](https://github.com/joelczk/writeups/blob/main/HTB/Images/Pit/weird_encoding.PNG)
 
-Next, I try to view the source code of the webpage and was able to find the full ```settings.xml``` file. From the file, I was able to pick up some database credentials that may be useful.
+Next, I try to view the source code of the webpage and was able to find the full ```settings.xml``` file in ```/var/www/html/seeddms51x/conf/``` directory. From the file, I was able to pick up some database credentials that may be useful.
 ```
     <!--
        - dbDriver: DB-Driver used by adodb (see adodb-readme)
@@ -188,11 +188,22 @@ Next, I try to view the source code of the webpage and was able to find the full
        - dbUser: username for database-access
        - dbPass: password for database-access
     -->    
-    <database dbDriver="sqlite" dbHostname="localhost" dbDatabase="/home/www-data/seeddms51x/data/content.db" dbUser="seeddms" dbPass="seeddms" doNotCheckVersion="false">
+    <database dbDriver="mysql" dbHostname="localhost" dbDatabase="seeddms" dbUser="seeddms" dbPass="ied^ieY6xoquu" doNotCheckVersion="false">
     </database>
     <!-- smtpServer: SMTP Server hostname
        - smtpPort: SMTP Server port
        - smtpSendFrom: Send from
     -->    
-    <smtp smtpServer="localhost" smtpPort="25" smtpSendFrom="seeddms@localhost" smtpUser="" smtpPassword=""/>   
+    <smtp smtpServer="localhost" smtpPort="25" smtpSendFrom="seeddms@localhost" smtpUser="" smtpPassword=""/> 
+```
+
+## obtaining user flag
+Using the database password and the user ```michelle``` as the username, we are able to login to the web admin portal on ```pit.htb:9090```. This portal seems to be a monitoring platform to monitor the services/infrastructure of the web servers. Researching on the CentOS web admin portal, we are able to find a ```/system/terminal``` endpoints that contains a web terminal. \
+From the web terminal, we are then able to obtain the user flag.
+```
+[michelle@pit ~]$ ls
+user.txt
+[michelle@pit ~]$ cat user.txt
+9f5f5195c48e73b42768dbf22c2f7a80
+[michelle@pit ~]$ 
 ```
