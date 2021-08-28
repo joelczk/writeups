@@ -147,4 +147,16 @@ https://seal.htb/admin/http%3A%2F%2Fswik    (Status: 400) [Size: 813]
 2021/08/28 03:27:30 Finished
 ===============================================================
 ```
-Similarly, we will use ```gobuster``` to enumerate ```https://seal.htb/manager```, but there are not output that caught my attention.
+Similarly, we will use ```gobuster``` to enumerate ```https://seal.htb/manager```, but there are not output that caught my attention.0
+
+Accessing ```http://seal.htb:8080```, we realize that this is a GitBucket portal for the site. Signing up for an account, we can login to the GitBucket account where we will be shown with a homepage of all the code changes of ```seal_market``` site.
+
+![Gitbucket site](https://github.com/joelczk/writeups/blob/main/HTB/Images/seal/gitbucket_site.PNG)
+
+From this site, we are able to obtain a set of credentials (```<user username="tomcat" password="42MrHBf*z8{Z%" roles="manager-gui,admin-gui"/>```) that was previously committed by luis (Commit ```971f3aa3f0a0cc8aac12fd696d9631ca540f44c7```). Afterwards, we try to login to gitbucket on using this set of credentials, but it failed.
+
+![Gitbucket credentials](https://github.com/joelczk/writeups/blob/main/HTB/Images/seal/gitbucket_exposed_credential.PNG)
+
+Next, we will try to find the login page for ```https://seal.htb/admin```. This page redirects us to an error page that reveals that we are using ```Apache Tomcat 9.0.31```. From the documentation for Apache Tomcat and from the previous results from ```gobuster```, we realize that we are able to access the ```/manager/status``` endpoint with the credentials (However, we do not have sufficient permissions to view the ```/manager/text``` endpoint)
+
+![/manager/status endpoint](https://github.com/joelczk/writeups/blob/main/HTB/Images/seal/manager_status_endpoint.PNG)
