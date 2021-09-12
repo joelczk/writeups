@@ -65,3 +65,11 @@ http://writer.htb/server-status        (Status: 403) [Size: 275]
 2021/09/11 14:06:47 Finished
 ===============================================================
 ```
+ From the output, we realize that there is a ```/administrative``` endpoint that returns a status code of 200 and visiting this site brings us to an admin login page
+ 
+ ![admin login page](https://github.com/joelczk/writeups/blob/main/HTB/Images/writer/admin_login.PNG)
+ 
+ Looking at the login page, we realize that the admin login page is vulnerable to SQL injection attacks. Uisng ```admin'or 1=1 or ''='``` as the username, we realize that we are able to login to the webpage, and we will be redirected to the ```/dashboard``` endpoint
+ 
+![dashboard endpoint](https://github.com/joelczk/writeups/blob/main/HTB/Images/writer/dashboard.PNG)
+ 
