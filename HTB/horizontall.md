@@ -299,7 +299,7 @@ $
 
 ![Laravel page](https://github.com/joelczk/writeups/blob/main/HTB/Images/horizontall/laravel_page.PNG)
 
-After some researching, we realize that laravel v8 is vulnerable to CVE-2021-312. We will download the exploit script from [here](https://github.com/nth347/CVE-2021-3129_exploit/blob/master/exploit.py) and modify it to read the system flag.
+After some researching, we realize that laravel v8 is vulnerable to CVE-2021-3129. We will download the exploit script from [here](https://github.com/zhzyker/CVE-2021-3129) and modify it to read the system flag.
 
 ```
 ┌──(kali㉿kali)-[~/Desktop/CVE-2021-3129]
