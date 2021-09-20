@@ -85,3 +85,24 @@ Found: admin.forge.htb (Status: 200) [Size: 27]
 2021/09/20 03:22:05 Finished
 ===============================================================
 ```
+
+Now, we will add the subdomain to our ```etc/hosts``` file. 
+
+```
+10.10.11.111    admin.forge.htb forge.htb
+```
+
+Visiting http://admin.forge.htb, we get the following message that it only allows connections from localhost. This gives us the idea that to be able to connect to http://admin.forget.htb, the only way would be through Server-Side Request Forgery.
+
+![Message shown on admin.forge.htb](https://github.com/joelczk/writeups/blob/main/HTB/Images/forge/admin_forge.PNG)
+
+Next, we will visit http://forge.htb/upload. We notice that there are 2 options for file uploads (Upload from local files and upload from URL). Let's first test with uploading of local file. 
+
+We notice that upon a successful file upload from local file, we are presented with a URL that will display an error page when we attempt to visit the page. However, on Burp we will be presented with a response that shows the file contents.
+
+![Error page](https://github.com/joelczk/writeups/blob/main/HTB/Images/forge/loal_file_upload_error.PNG)
+
+![Burp output](https://github.com/joelczk/writeups/blob/main/HTB/Images/forge/local_file_upload_burp.PNG)
+
+Next, we will test out file upload by url. We will first try to use http://localhost as the url. However, we realize that this url is blacklisted and we are unable to access it. Similarly, when we try to use http://admin.forge.htb as the URL we will also realize that the url is blacklisted and we are unable to access it.
+
