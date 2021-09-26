@@ -103,3 +103,13 @@ our ```/etc/hosts``` file.
 ```
 10.10.10.215    dev-staging-01.academy.htb academy.htb
 ```
+
+Visiting ```http://dev-staging-01.academy.htb```, we are redirected to an exposed error page that reveals a Laravel error page, together with the environment variables, which reveals some sensitive information such as the APP_KEY and the database credentials. However, at this point in time, we are unable to view the database as it is hosted on the localhost.
+
+![Exposed credentials from laravel debug page](https://github.com/joelczk/writeups/blob/main/HTB/Images/academy/laravel_debug.PNG)
+
+We also realized that we are unable to decode the APP_KEY that we have obtained. 
+
+![Decoding APP_KEY](https://github.com/joelczk/writeups/blob/main/HTB/Images/academy/decode_app_key.PNG)
+
+At the same time, we also realize that this website might be vulnerable to [CVE-2018-15133](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-15133), where we can carry out an RCE due to an unserialize call on a potentially untrusted X-XSRF-TOKEN value as we are able to obtain the APP_KEY. 
