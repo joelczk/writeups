@@ -71,3 +71,44 @@ contains a few security vulnerabilities.
 └─$ whatweb http://armageddon.htb                     
 http://armageddon.htb [200 OK] Apache[2.4.6], Content-Language[en], Country[RESERVED][ZZ], Drupal, HTTPServer[CentOS][Apache/2.4.6 (CentOS) PHP/5.4.16], IP[10.10.10.233], JQuery, MetaGenerator[Drupal 7 (http://drupal.org)], PHP[5.4.16], PasswordField[pass], PoweredBy[Arnageddon], Script[text/javascript], Title[Welcome to  Armageddon |  Armageddon], UncommonHeaders[x-content-type-options,x-generator], X-Frame-Options[SAMEORIGIN], X-Powered-By[PHP/5.4.16]
 ```
+
+From ```whatweb```, we know that the website supports PHP. Now, we will try to enumerate for endpoints again, but using php as a file extension. However, we were not able to find any interesting endpoints from the output. 
+
+```
+                                                                                        
+┌──(kali㉿kali)-[~]
+└─$ gobuster dir -u http://armageddon.htb/ -w /home/kali/Desktop/subdomains.txt -e -k -t 50 -x php                       
+===============================================================
+Gobuster v3.1.0
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     http://armageddon.htb/
+[+] Method:                  GET
+[+] Threads:                 50
+[+] Wordlist:                /home/kali/Desktop/subdomains.txt
+[+] Negative Status codes:   404
+[+] User Agent:              gobuster/3.1.0
+[+] Extensions:              php
+[+] Expanded:                true
+[+] Timeout:                 10s
+===============================================================
+2021/09/27 02:40:21 Starting gobuster in directory enumeration mode
+===============================================================
+http://armageddon.htb/scripts              (Status: 301) [Size: 238] [--> http://armageddon.htb/scripts/]
+http://armageddon.htb/themes               (Status: 301) [Size: 237] [--> http://armageddon.htb/themes/] 
+http://armageddon.htb/profiles             (Status: 301) [Size: 239] [--> http://armageddon.htb/profiles/]
+http://armageddon.htb/install.php          (Status: 200) [Size: 3206] 
+http://armageddon.htb/index.php            (Status: 200) [Size: 7480] 
+http://armageddon.htb/cron.php             (Status: 403) [Size: 7428]
+http://armageddon.htb/misc                 (Status: 301) [Size: 235] [--> http://armageddon.htb/misc/] 
+http://armageddon.htb/modules              (Status: 301) [Size: 238] [--> http://armageddon.htb/modules/] 
+http://armageddon.htb/xmlrpc.php           (Status: 200) [Size: 42]
+http://armageddon.htb/includes             (Status: 301) [Size: 239] [--> http://armageddon.htb/includes/]
+http://armageddon.htb/authorize.php        (Status: 403) [Size: 2854]
+```
+
+Next, we would need to find the version of Drupal that is being used. Looking at the forums [here](https://www.drupal.org/forum/support/post-installation/2005-10-16/how-to-check-drupal-version), we can find the latest version of Drupal used at the ```/CHANGELOG.txt``` endpoint. Visiting that endpoint, we discover that the latest version of Drupal is 7.56
+
+![Drupal version](https://github.com/joelczk/writeups/blob/main/HTB/Images/Armagaddon/drupal_version.PNG)
+
+Reseaching on Drupal online, we realized that Drupal 7.56 may be vulnerable to CVE-2018-
