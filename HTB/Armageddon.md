@@ -111,4 +111,8 @@ Next, we would need to find the version of Drupal that is being used. Looking at
 
 ![Drupal version](https://github.com/joelczk/writeups/blob/main/HTB/Images/Armagaddon/drupal_version.PNG)
 
-Reseaching on Drupal online, we realized that Drupal 7.56 may be vulnerable to CVE-2018-
+Reseaching on Drupal online, we realized that Drupal 7.56 may be vulnerable to CVE-2018-7600, which is a remote code execution vulnerability. For this CVE, we are able to find an exploit code on github [here](https://github.com/dreadlocked/Drupalgeddon2). Th 
+* Tried to use burp suite to exploit it but failed to exploit
+* Tried to use the repository [here](https://github.com/pimps/CVE-2018-7600) as well but failed too! (Maybe I used the wrong payload)
+
+![Web Shell](https://github.com/joelczk/writeups/blob/main/HTB/Images/Armagaddon/web_shell.PNG)
