@@ -93,3 +93,17 @@ www-data@bashed:/home# cd arrexel
 www-data@bashed:/home/arrexel# cat user.txt
 <Redacted user flag>
 ```
+
+## Obtaining root flag
+
+Executing ```sudo -l```, we realize that we can execute commands as the user ```scriptmanager```, but with root privileges
+
+```
+
+www-data@bashed:/var/www/html/uploads# sudo -l
+Matching Defaults entries for www-data on bashed:
+env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+User www-data may run the following commands on bashed:
+(scriptmanager : scriptmanager) NOPASSWD: ALL
+```
+
