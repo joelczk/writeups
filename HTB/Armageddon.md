@@ -24,7 +24,7 @@ Now, we will do a scan on the UDP ports to find any possible open UDP ports. Hoo
 nmap -sU -Pn 10.10.10.233 -T4 -vv 
 ```
 
-Before we continue furthur, we will add the IP address ```10.10.11.101``` to ```writer.htb``` in our ```/etc/hosts``` file. 
+Before we continue furthur, we will add the IP address ```10.10.11.101``` to ```armageddon.htb``` in our ```/etc/hosts``` file. 
 
 ```
 10.10.10.233    armageddon.htb
