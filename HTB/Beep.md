@@ -58,3 +58,74 @@ From the masscan, we notice that there is an open UDP port. We will use nmap to 
 
 ## Discovery
 
+First, we will try to find the endpoints of https://beep.htb. From the output, we were able to find an interesting endpoint https://beep.htb/vtigercrm
+
+```
+┌──(kali㉿kali)-[~]
+└─$ gobuster dir -u https://beep.htb -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -t 50
+===============================================================
+Gobuster v3.1.0
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     https://beep.htb
+[+] Method:                  GET
+[+] Threads:                 50
+[+] Wordlist:                /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+[+] Negative Status codes:   404
+[+] User Agent:              gobuster/3.1.0
+[+] Expanded:                true
+[+] Timeout:                 10s
+===============================================================
+2021/09/29 05:52:41 Starting gobuster in directory enumeration mode
+===============================================================
+https://beep.htb/images               (Status: 301) [Size: 306] [--> https://beep.htb/images/]
+https://beep.htb/help                 (Status: 301) [Size: 304] [--> https://beep.htb/help/]
+https://beep.htb/themes               (Status: 301) [Size: 306] [--> https://beep.htb/themes/]
+https://beep.htb/modules              (Status: 301) [Size: 307] [--> https://beep.htb/modules/]
+https://beep.htb/mail                 (Status: 301) [Size: 304] [--> https://beep.htb/mail/] 
+https://beep.htb/admin                (Status: 301) [Size: 305] [--> https://beep.htb/admin/] 
+https://beep.htb/static               (Status: 301) [Size: 306] [--> https://beep.htb/static/] 
+https://beep.htb/lang                 (Status: 301) [Size: 304] [--> https://beep.htb/lang/] 
+https://beep.htb/panel                (Status: 301) [Size: 305] [--> https://beep.htb/panel/] 
+https://beep.htb/libs                 (Status: 301) [Size: 304] [--> https://beep.htb/libs/] 
+https://beep.htb/recordings           (Status: 301) [Size: 310] [--> https://beep.htb/recordings/]
+https://beep.htb/vtigercrm            (Status: 301) [Size: 309] [--> https://beep.htb/vtigercrm/] 
+```
+
+Next, we will visit the https://beep.htb. From the website we realize that the website uses PHP. Now, we will use gobuster to find for endpoints with PHP
+
+```
+┌──(kali㉿kali)-[~]
+└─$ gobuster dir -u https://beep.htb -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -t 50 -x php
+===============================================================
+Gobuster v3.1.0
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     https://beep.htb
+[+] Method:                  GET
+[+] Threads:                 50
+[+] Wordlist:                /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+[+] Negative Status codes:   404
+[+] User Agent:              gobuster/3.1.0
+[+] Extensions:              php
+[+] Expanded:                true
+[+] Timeout:                 10s
+===============================================================
+2021/09/29 06:10:23 Starting gobuster in directory enumeration mode
+===============================================================
+https://beep.htb/images               (Status: 301) [Size: 306] [--> https://beep.htb/images/]
+https://beep.htb/help                 (Status: 301) [Size: 304] [--> https://beep.htb/help/]  
+https://beep.htb/index.php            (Status: 200) [Size: 1785]    
+https://beep.htb/register.php         (Status: 200) [Size: 1785]
+https://beep.htb/themes               (Status: 301) [Size: 306] [--> https://beep.htb/themes/]
+https://beep.htb/modules              (Status: 301) [Size: 307] [--> https://beep.htb/modules/]
+https://beep.htb/mail                 (Status: 301) [Size: 304] [--> https://beep.htb/mail/]
+https://beep.htb/admin                (Status: 301) [Size: 305] [--> https://beep.htb/admin/] 
+https://beep.htb/static               (Status: 301) [Size: 306] [--> https://beep.htb/static/]
+https://beep.htb/lang                 (Status: 301) [Size: 304] [--> https://beep.htb/lang/] 
+https://beep.htb/config.php           (Status: 200) [Size: 1785]  
+https://beep.htb/panel                (Status: 301) [Size: 305] [--> https://beep.htb/panel/] 
+https://beep.htb/libs                 (Status: 301) [Size: 304] [--> https://beep.htb/libs/]
+https://beep.htb/configs              (Status: 301) [Size: 307] [--> https://beep.htb/configs/] 
+https://beep.htb/recordings           (Status: 301) [Size: 310] [--> https://beep.htb/recordings/]
+```
