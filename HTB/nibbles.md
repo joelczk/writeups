@@ -60,6 +60,54 @@ PORT   STATE SERVICE REASON
 
 First, we will try to find the endpoints and Vhosts of http://nibbles.htb with Gobuster. However, we were not able to find anything meaninful from the output
 
+Visiting the website, we are presented with an empty page with the words _Hello World!_. However, upon inspecting the source code of the page, we realize that it contains a comment that points to the ```/nibbleblog``` endpoint.
+
+![Nibbleblog directory](https://github.com/joelczk/writeups/blob/main/HTB/Images/Nibbles/nibbleblog.PNG)
+
+Visiting http;//nibbles.htb/nibbleblog, we realize that this webpage is using PHP. We will then enumerate furthur endpoints using Gobuster.
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ gobuster dir -u http://nibbles.htb/nibbleblog/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -t 50 -x php -z --timeout 20s 
+===============================================================
+Gobuster v3.1.0
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     http://nibbles.htb/nibbleblog/
+[+] Method:                  GET
+[+] Threads:                 50
+[+] Wordlist:                /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+[+] Negative Status codes:   404
+[+] User Agent:              gobuster/3.1.0
+[+] Extensions:              php
+[+] Expanded:                true
+[+] Timeout:                 20s
+===============================================================
+2021/10/02 06:00:28 Starting gobuster in directory enumeration mode
+===============================================================
+http://nibbles.htb/nibbleblog/sitemap.php          (Status: 200) [Size: 401]
+http://nibbles.htb/nibbleblog/content              (Status: 301) [Size: 323] [--> http://nibbles.htb/nibbleblog/content/]
+http://nibbles.htb/nibbleblog/themes               (Status: 301) [Size: 322] [--> http://nibbles.htb/nibbleblog/themes/] 
+http://nibbles.htb/nibbleblog/feed.php             (Status: 200) [Size: 300]                                             
+http://nibbles.htb/nibbleblog/index.php            (Status: 200) [Size: 2986]                                            
+http://nibbles.htb/nibbleblog/admin.php            (Status: 200) [Size: 1401]                                            
+http://nibbles.htb/nibbleblog/admin                (Status: 301) [Size: 321] [--> http://nibbles.htb/nibbleblog/admin/]  
+http://nibbles.htb/nibbleblog/plugins              (Status: 301) [Size: 323] [--> http://nibbles.htb/nibbleblog/plugins/]
+http://nibbles.htb/nibbleblog/install.php          (Status: 200) [Size: 78]                                              
+http://nibbles.htb/nibbleblog/update.php           (Status: 200) [Size: 1622]                                            
+http://nibbles.htb/nibbleblog/README               (Status: 200) [Size: 4628]                                            
+http://nibbles.htb/nibbleblog/languages            (Status: 301) [Size: 325] [--> http://nibbles.htb/nibbleblog/languages/]
+```
+
+Looking at http://nibbles.htb/README, we were able to determine that we are using a Nibbleblog 4.0.3 and the PHP that the website is using is v5.2 or higher. Upon some research, we realize that Nibbleblog is a CMS that operates based on PHP and uses XML to store its data. 
+
+Next up, visitng http://nibbles.htb/nibbleblog/update.php, we are able to find another endpoint ```/content/private/config.xml```. Looking at that endpoint, we were able to extract the following pieces of information:
+* IP Address: 10.10.10.134
+* Possible username: admin
+
+![config.xml file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Nibbles/config_xml.PNG)
+
+
 ## Obtaining user flag
 
 ## Obtaining root flag
