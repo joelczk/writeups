@@ -2,7 +2,7 @@
 IP Address: 10.10.10.75\
 OS: Linux
 
-## Enumeration
+## Discovery
 
 First, let's add the IP address and the host to our ```/etc/hosts``` file.
 
@@ -10,7 +10,8 @@ First, let's add the IP address and the host to our ```/etc/hosts``` file.
 10.10.10.75    nibbles.htb
 ```
 
-Next, we will scan for open ports using masscan. Form the output, we realize that there are numerous open ports on this machine.
+### Masscan
+Firstly, we scan for open ports using masscan. Form the output, we realize that there are numerous open ports on this machine.
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -22,7 +23,8 @@ Discovered open port 22/tcp on 10.10.10.75
 Discovered open port 80/tcp on 10.10.10.75  
 ```
 
-Now, we will scan these open ports using Nmap to identify the service behind each of these open ports.
+### Nmap
+Next, we will scan these open ports using Nmap to identify the service behind each of these open ports.
 
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
@@ -56,9 +58,9 @@ PORT   STATE SERVICE REASON
 |_http-stored-xss: Couldn't find any stored XSS vulnerabilities.
 |_http-wordpress-users: [Error] Wordpress installation was not found. We couldn't find wp-login.php
 ```
-## Discovery
 
-First, we will try to find the endpoints and Vhosts of http://nibbles.htb with Gobuster. However, we were not able to find anything meaninful from the output
+### Gobuster
+We will try to find the endpoints and Vhosts of http://nibbles.htb with Gobuster. However, we were not able to find anything meaninful from the output
 
 Visiting the website, we are presented with an empty page with the words _Hello World!_. However, upon inspecting the source code of the page, we realize that it contains a comment that points to the ```/nibbleblog``` endpoint.
 
@@ -107,6 +109,7 @@ Next up, visitng http://nibbles.htb/nibbleblog/update.php, we are able to find a
 
 ![config.xml file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Nibbles/config_xml.PNG)
 
+### Bruteforcing admin page
 Together with the username, we will attempt to bruteforce the password to the SSH terminal using Hydra. Howeber, it seems that we are unable to bruteforce the login.
 
 ```
@@ -187,6 +190,8 @@ if __name__ == '__main__':
 	run(args.w, args.u, args.p)
 ```
 
+## Exploit
+### CVE-2015-6967
 Researching on nibbleblog, we realize that nibblieblog 4.0.3 is vulnerable to CVE-2015-6967. THis allows any authenticated user to upload arbitary files and spawn a reverse shell. However, the exploit on exploitdb [here](https://www.exploit-db.com/exploits/38489) only uses matasploit. Using the tutorial from [here](https://wikihak.com/how-to-upload-a-shell-in-nibbleblog-4-0-3/), we will try to craft our own payload.
 
 But first, we have to make sure that our image plugin is activated.
@@ -197,7 +202,7 @@ Next, let's try to upload a test file via http://nibbles.htb/nibbleblog/admin.ph
 
 ![Uploaded files](https://github.com/joelczk/writeups/blob/main/HTB/Images/Nibbles/uploaded_files.PNG)
 
-## Obtaining user flag
+### Obtaining reverse shell
 
 Now, we will upload a php reverse shell, downloaded from [PentestMonkey](https://github.com/pentestmonkey/php-reverse-shell) on the website and accessing the uploaded file will grant us a reverse shell. But, first let's stabilize the reverse shell
 
@@ -219,6 +224,8 @@ stty cols 132 rows 34
 nibbler@Nibbles:/$
 ```
 
+### Obtaining user flag
+
 Now, all we have to do is to obtain the user flag.
 
 ```
@@ -229,7 +236,7 @@ cat user.txt
 <Redacted user flag>
 nibbler@Nibbles:/home/nibbler$ 
 ```
-## Obtaining root flag
+### Privilege Escalation to root user
 
 First, let us check if we are able to execute any programs with sudo privileges using this account on SSH. We discovered that we can execute a monitor.sh program with sudo privileges, but we are unable to find any monitor.sh files. However, we do find a ```personal.zip``` file in the current directory.
 
@@ -271,7 +278,7 @@ nibbler@Nibbles:/home/nibbler/personal/stuff$ sudo ./monitor.sh
 sudo ./monitor.sh
 root@Nibbles:/home/nibbler/personal/stuff# 
 ```
-
+### Obtaining root flag
 All that is left for us to do is to obtain the root flag.
 
 ```
