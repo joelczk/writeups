@@ -2,8 +2,13 @@
 IP Address : 10.10.11.105\
 Operating System : Linux
 
-## Enumeration
-Firstly, let us enumerate all the open ports using ```Nmap```
+## Discovery
+Before we being, let's add the IP address and host to our ```/etc/hosts``` file. 
+```
+10.10.11.105    horizontall.htb 
+```
+### Nmap
+Firstly, let us enumerate all the open ports using Nmap
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -13,7 +18,7 @@ Firstly, let us enumerate all the open ports using ```Nmap```
 nmap -sC -sV -A -p- -T4 10.10.11.105 -vv
 ```
 
-From the output of ```NMAP```, we are able to obtain the following information about the open TCP ports:
+From the output of Nmap`, we are able to obtain the following information about the open TCP ports:
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
 | 22	| SSH | OpenSSH 7.6p1 Ubuntu 4ubuntu0.5 (Ubuntu Linux; protocol 2.0) | Open |
@@ -24,14 +29,8 @@ Now, we will do a scan on the UDP ports to find any possible open UDP ports. Hoo
 nmap -sU -Pn 10.10.11.105 -T4 -vv 
 ```
 
-Next, we would have to add the IP address to our ```/etc/hosts``` file. 
-```
-10.10.11.105    horizontall.htb 
-```
-
-## Discovery
-
-First, we will try to enumerate the endpoints on ```http://horizontall.htb``` using Gobuster. However, we were unable to find any endpoints that are of interest to us. 
+### Gobuster
+Next, we will try to enumerate the endpoints on ```http://horizontall.htb``` using Gobuster. However, we were unable to find any endpoints that are of interest to us. 
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -110,7 +109,7 @@ http://api-prod.horizontall.htb/Admin                (Status: 200) [Size: 854]
 http://api-prod.horizontall.htb/REVIEWS              (Status: 200) [Size: 507]
 ```
 
-
+### Web content discovery
 Visiting any site of interest that given in the Gobuster output, we realize that we will be redirected to ```/admin/auth/login``` endpoint, which is a Strapi admin login page.
 
 ![Strapi Admin login page](https://github.com/joelczk/writeups/blob/main/HTB/Images/horizontall/strapi_admin.PNG)
@@ -123,6 +122,8 @@ Next, we will need to find the version of Strapi used. This can be found by call
 {"strapiVersion":"3.0.0-beta.17.4"}  
 ```
 
+## Exploit
+### CVE-2019-11818
 After some research, we realize that this version of strapi is vulnerable to CVE-2019-11818 and we can obtain an exploit code for it [here](https://www.exploit-db.com/exploits/50237). All we have to do is to modify the URL in the exploit code.
 After a few guesses, we managed to guess that the admin email for the website is ```admin@horizontall.htb```, and manage to reset the password for the email
 ```
@@ -138,7 +139,7 @@ Capturing the request when we logint to the admin page, we are able to discover 
 
 ![JWT token captured from Burp](https://github.com/joelczk/writeups/blob/main/HTB/Images/horizontall/jwt_burp.PNG)
 
-## Obtaining User flag
+### CVE-2019-19609
 After some more research, we also realize that this version of Strapi is vulnerable to CVE-2019-19609, which is authenticated RCE. Obtaining the exploit script from [here](https://github.com/diego-tella/CVE-2019-19609-EXPLOIT/blob/main/exploit.py), we are able to get a reverse shell (NOTE: The exploit may fail sometimes, when that happens just reset your machine LOLz)
 
 ```
@@ -173,8 +174,8 @@ strapi@horizontall:~/myapi$ stty cols 132 rows 34
 stty cols 132 rows 34
 strapi@horizontall:~/myapi$
 ```
-
-Lastly, we will then obtain our user flag. 
+### Obtaining user flag
+Now, all we have to do is to obtain our user flag. 
 
 ```
 strapi@horizontall:~/myapi$ cd /home/developer
@@ -188,7 +189,7 @@ cat user.txt
 strapi@horizontall:/home/developer$ 
 ```
 
-## Obtaining root flag
+### Testing for privilege escalation
 
 Next, we will navigate back to the ```/myapi``` directory and execute linpeas script to check for privilege escalation vectors
 
@@ -217,6 +218,7 @@ We will now run a curl command on ```http://localhost:8000```, and we realize th
             </div>
 ```
 
+### Port-forwarding
 Now, we have to do port-forwarding so that we can access the localhost service on our attacker machine. On the attacker's machine, we will have to generate the SSH key using ```ssh-keygen``` and host the key on our attacker's IP
 
 ```
@@ -299,7 +301,8 @@ $
 
 ![Laravel page](https://github.com/joelczk/writeups/blob/main/HTB/Images/horizontall/laravel_page.PNG)
 
-After some researching, we realize that laravel v8 is vulnerable to CVE-2021-3129. We will download the exploit script from [here](https://github.com/zhzyker/CVE-2021-3129) and modify it to read the system flag.
+### CVE-2021-3129 to obtain root flag
+After some researching, we realize that laravel v8 is vulnerable to CVE-2021-3129. We will download the exploit script from [here](https://github.com/zhzyker/CVE-2021-3129) and modify it to read the root flag.
 
 ```
 ┌──(kali㉿kali)-[~/Desktop/CVE-2021-3129]
