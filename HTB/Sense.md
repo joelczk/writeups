@@ -68,7 +68,56 @@ https://10.10.10.60/filebrowser          (Status: 301) [Size: 0] [--> https://10
 
 We will also tried to find virtual hosts on http://sense.htb, but we were unable to find any vhosts.
 
-### DirBuster
+Next, we will try to use Gobuster to do an enumeration for common files extensions such as .js,.txt,.php and .html. From the output, there is actually a lot directories and files that are irrelevent. However, there are 2 text files that catch our attention, namely ```changelog.txt``` and ```system-users.txt```
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ gobuster dir -u https://10.10.10.60/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -t 50 -x php,txt,html,js --wildcard -o gobuster.txt
+===============================================================
+Gobuster v3.1.0
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     https://10.10.10.60/
+[+] Method:                  GET
+[+] Threads:                 50
+[+] Wordlist:                /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt
+[+] Negative Status codes:   404
+[+] User Agent:              gobuster/3.1.0
+[+] Extensions:              php,txt,html,js
+[+] Expanded:                true
+[+] Timeout:                 10s
+===============================================================
+2021/10/03 12:46:21 Starting gobuster in directory enumeration mode
+===============================================================
+https://10.10.10.60/help.php             (Status: 200) [Size: 6689]
+https://10.10.10.60/index.php            (Status: 200) [Size: 6690]
+https://10.10.10.60/index.html           (Status: 200) [Size: 329]
+https://10.10.10.60/themes               (Status: 301) [Size: 0] [--> https://10.10.10.60/themes/]
+https://10.10.10.60/stats.php            (Status: 200) [Size: 6690]
+https://10.10.10.60/css                  (Status: 301) [Size: 0] [--> https://10.10.10.60/css/]
+https://10.10.10.60/edit.php             (Status: 200) [Size: 6689]
+https://10.10.10.60/includes             (Status: 301) [Size: 0] [--> https://10.10.10.60/includes/]
+https://10.10.10.60/system.php           (Status: 200) [Size: 6691]
+https://10.10.10.60/license.php          (Status: 200) [Size: 6692]
+https://10.10.10.60/status.php           (Status: 200) [Size: 6691]
+https://10.10.10.60/javascript           (Status: 301) [Size: 0] [--> https://10.10.10.60/javascript/]
+https://10.10.10.60/changelog.txt        (Status: 200) [Size: 271]
+https://10.10.10.60/classes              (Status: 301) [Size: 0] [--> https://10.10.10.60/classes/]
+https://10.10.10.60/exec.php             (Status: 200) [Size: 6689]
+https://10.10.10.60/widgets              (Status: 301) [Size: 0] [--> https://10.10.10.60/widgets/]
+https://10.10.10.60/graph.php            (Status: 200) [Size: 6690]
+https://10.10.10.60/tree                 (Status: 301) [Size: 0] [--> https://10.10.10.60/tree/]
+https://10.10.10.60/wizard.php           (Status: 200) [Size: 6691]
+https://10.10.10.60/shortcuts            (Status: 301) [Size: 0] [--> https://10.10.10.60/shortcuts/]
+https://10.10.10.60/pkg.php              (Status: 200) [Size: 6688]
+https://10.10.10.60/installer            (Status: 301) [Size: 0] [--> https://10.10.10.60/installer/]
+https://10.10.10.60/wizards              (Status: 301) [Size: 0] [--> https://10.10.10.60/wizards/]
+https://10.10.10.60/xmlrpc.php           (Status: 200) [Size: 384]
+https://10.10.10.60/reboot.php           (Status: 200) [Size: 6691]
+https://10.10.10.60/interfaces.php       (Status: 200) [Size: 6695]
+https://10.10.10.60/csrf                 (Status: 301) [Size: 0] [--> https://10.10.10.60/csrf/]
+https://10.10.10.60/system-users.txt     (Status: 200) [Size: 106]
+```
 
 ### Web Content Discovery
 ## Exploit
