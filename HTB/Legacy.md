@@ -74,7 +74,7 @@ Host script results:
 |_      https://technet.microsoft.com/en-us/library/security/ms17-010.aspx
 ```
 
-## Exploite
+## Exploit
 ### CVE-2008-4250
 For ```CVE-2008-4250```, I will use meterpreter to exploit the vulnerability (Cant seem to find any working exploit:(). After the exploit, we realise that we have gained access to the SMB server with root privileges
 ```code
