@@ -30,6 +30,7 @@ Afterwards,we will use the open ports obtained from masscan to run a scan using 
 | 80	| http | lighttpd 1.4.35 | Open |
 | 443	| ssl/http syn-ack | lighttpd 1.4.35 | Open |
 
+### Ssylze
 
 ### Gobuster
 Next, we will use Gobuster to find the endpoints that are accessible from http://10.10.10.60. However, they were unable to produce any useful outputs.
@@ -117,9 +118,19 @@ https://10.10.10.60/reboot.php           (Status: 200) [Size: 6691]
 https://10.10.10.60/interfaces.php       (Status: 200) [Size: 6695]
 https://10.10.10.60/csrf                 (Status: 301) [Size: 0] [--> https://10.10.10.60/csrf/]
 https://10.10.10.60/system-users.txt     (Status: 200) [Size: 106]
+https://10.10.10.60/filebrowser          (Status: 301) [Size: 0] [--> https://10.10.10.60/filebrowser/]
 ```
 
 ### Web Content Discovery
+
+Visiting https://sense.htb/changelog.txt, we know that there is still an existing vulnerability that is not patched yet. Maybe, this could be CVE that we could look into when we try to exploit the site.
+
+![changelog.txt](https://github.com/joelczk/writeups/blob/main/HTB/Images/Sense/changelog.PNG)
+
+Visiting https://sense.htb/system-users.txt, we are able to know that the username to login to the website is ```Rohit```, but we do not know the password. 
+
+![syetsm-users.txt](https://github.com/joelczk/writeups/blob/main/HTB/Images/Sense/system-users.PNG)
+
 ## Exploit
 ### Obtaining reverse shell
 ### Obtaining user flag
