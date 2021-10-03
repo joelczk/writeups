@@ -2,15 +2,16 @@
 IP Address: 10.10.10.7\
 OS: Linux
 
-## Enumeration
+## Discovery
 
-First, let's add the IP address and the host to our ```/etc/hosts``` file.
+Firstly, let's add the IP address and the host to our ```/etc/hosts``` file.
 
 ```
 10.10.10.7    beep.htb
 ```
+### Masscan
 
-Next, we will scan for open ports using masscan. Form the output, we realize that there are numerous open ports on this machine.
+We will first off by scanning for open ports using masscan. Form the output, we realize that there are numerous open ports on this machine.
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -38,7 +39,8 @@ Discovered open port 110/tcp on 10.10.10.7
 Discovered open port 4445/tcp on 10.10.10.7   
 ```
 
-Now, we will scan these open ports using Nmap to identify the service behind each of these open ports.
+### Nmap
+Next, we will scan these open ports using Nmap to identify the service behind each of these open ports.
 
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
@@ -54,11 +56,10 @@ Now, we will scan these open ports using Nmap to identify the service behind eac
 | 5038	| asterisk | Asterisk Call Manager 1.1 | Open |
 | 10000	| http | MiniServ 1.570 (Webmin httpd) | Open |
 
-From the masscan, we notice that there is an open UDP port. We will use nmap to scan the UDP port, but we did not notice anything of interest from the nmap scan. 
+From the masscan, we notice that port 10000 is also a UDP port. However, the nmap scan of port 10000 does not turn up any interesting information about the UDP port.
 
-## Discovery
-
-First, we will try to find the endpoints of https://beep.htb. From the output, we were able to find an interesting endpoint https://beep.htb/vtigercrm
+### Gobuster
+Afterwards, we will try to find the endpoints of https://beep.htb using Gobuster. From the output, we were able to find an interesting endpoint https://beep.htb/vtigercrm
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -92,7 +93,7 @@ https://beep.htb/recordings           (Status: 301) [Size: 310] [--> https://bee
 https://beep.htb/vtigercrm            (Status: 301) [Size: 309] [--> https://beep.htb/vtigercrm/] 
 ```
 
-Next, we will visit the https://beep.htb. From the website we realize that the website uses PHP. Now, we will use gobuster to find for endpoints with PHP
+Visitng https://beep.htb, we realize that the website uses PHP. Now, we will use gobuster to find for endpoints with PHP
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -130,6 +131,8 @@ https://beep.htb/configs              (Status: 301) [Size: 307] [--> https://bee
 https://beep.htb/recordings           (Status: 301) [Size: 310] [--> https://beep.htb/recordings/]
 ```
 
+## Exploit
+### CVE-2012-4687
 Next, we will visit https://beep.htb/vtigercrm and with some research, we realize that we can abuse the LFI from [CVE-2012-4687](https://www.exploit-db.com/exploits/18770). Afterwards, we will try to exploit LFI to RCE using ```/proc/self/fd/*``` but it failed. 
 
 Using the LFI vulnerability, we can access the ```/proc/self/status``` that tells us the running process. From the output, we can find that a user with UID 100 and GID 101 is running the process in the background
@@ -140,6 +143,7 @@ Changing the LFI payload to ```/etc/passwd```, we are able to find that UID 100 
 
 ![/etc/passwd file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Beep/etc_passwd.PNG)
 
+### Reverse shell via SMTP
 Recalling that we have an SMTP service at port 25, we will try to connect to the SMTP server and wait for the server banner. Notice that we are using ```beep.localdomain```
 
 ```
@@ -191,11 +195,11 @@ Now, we will view the sent mail on ```/var/mail/asterisk```. However, we realize
 
 ![mail on asterisk](https://github.com/joelczk/writeups/blob/main/HTB/Images/Beep/mail.PNG)
 
-## Obtaining user flag
 
 Next, we will modify the payload to obtain a reverse shell.
 ![Reverse shell](https://github.com/joelczk/writeups/blob/main/HTB/Images/Beep/rev_shell.PNG)
 
+### Obtaining user flag
 Now, we all we have to do is to obtain the user flag.
 
 ```
@@ -210,7 +214,7 @@ bash-3.2$ cat user.txt
 bash-3.2$ 
 ```
 
-## Obtaining root flag
+### Privilege Escalation to root
 
 We will first look at the privileges that we have using ```sudo -l```. We realize that we can execute nmap with root privileges without password 
 
@@ -255,6 +259,7 @@ bash-3.2# export TERM=xterm
 bash-3.2# stty cols 132 rows 34
 ```
 
+### Obtaining root flag
 All that is left for us to do is to obtain the root flag.
 
 ```
