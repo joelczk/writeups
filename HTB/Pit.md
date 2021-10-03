@@ -309,8 +309,12 @@ iso.3.6.1.4.1.8072.1.3.2.2.1.6.10.109.111.110.105.116.111.114.105.110.103 = INTE
 iso.3.6.1.4.1.8072.1.3.2.2.1.7.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
 iso.3.6.1.4.1.8072.1.3.2.2.1.20.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 4
 iso.3.6.1.4.1.8072.1.3.2.2.1.21.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
+```
 
 ### Obtaining root flag
+
+Now, all we have to do is to SSH into the server and obtain the root flag.
+```
 ┌──(kali㉿kali)-[~/Desktop]
 └─$ ssh -i key root@10.10.10.241                                                                 1 ⚙
 The authenticity of host '10.10.10.241 (10.10.10.241)' can't be established.
