@@ -246,7 +246,7 @@ Session completed
 1 password hash cracked, 0 left
 ```
 
-## Obtaining user flag
+### Obtaining user flag
 Using the cracked credentials, we will SSH into the server and obtain the user flag
 ```code
 ┌──(kali㉿kali)-[~/Desktop]
@@ -279,7 +279,7 @@ m4lwhere@previse:~$ cat user.txt
 m4lwhere@previse:~$  
 ```
 
-## Path Injection
+### Path Injection
 First, we will try to find the programs with root privileges and we discovered that ```/opt/scripts/access_backup.sh``` can be executed with root privileges.
 ```code
 m4lwhere@previse:~$ sudo -l
