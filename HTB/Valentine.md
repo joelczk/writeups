@@ -2,18 +2,16 @@
 IP Address : 10.10.10.79\
 OS: Linux
 
-## Enumeration
+## Discovery
 
-First, let's add the IP address and the host to our ```/etc/hosts``` file. 
+Firstly, let's add the IP address and the host to our ```/etc/hosts``` file. 
 
 ```
 10.10.10.79    valentine.htb
 ```
+### Masscan
 
-## Enmeration
-
-First, we will try to discover the endpoints related to http://valentine.htb using gobuster
-
+First, we will try to find the open ports using masscan
 ```
 ┌──(kali㉿kali)-[~]
 └─$ sudo masscan -p1-65535,U:1-65535 10.10.10.79 --rate=1000 -e tun0                1 ⨯
@@ -24,7 +22,7 @@ Discovered open port 22/tcp on 10.10.10.79
 Discovered open port 443/tcp on 10.10.10.79                                    
 Discovered open port 80/tcp on 10.10.10.79  
 ```
-
+### Nmap
 With the open ports, we will scan them using Nmap to discover the services behind each of the open ports
 
 ```
@@ -35,9 +33,8 @@ With the open ports, we will scan them using Nmap to discover the services behin
 | 443	| ssl/http | Apache httpd 2.2.22 ((Ubuntu)) | Open |
 ```
 
-## Discovery
-
-First we will use Gobuster to enumerate all the possible endpoints on http://valentine.htb. From the output, we were able to discover some interesting endpoints such as 
+### Gobuster
+We will then use Gobuster to enumerate all the possible endpoints on http://valentine.htb. From the output, we were able to discover some interesting endpoints such as 
 ```/encode```, ```/decode``` and ```/dev```
 
 ```
@@ -68,12 +65,15 @@ http://valentine.htb/server-status        (Status: 403) [Size: 294]
 
 Next, we will try to discover possible Vhosts on the target site using Gobuster, but we were unable to discover anything much of interest. 
 
+### Web content discovery
 Now, we will try to look at the ```/encode``` and ```/decode``` endpoints. There doesn't seem to have any potential vulnerabilities that could be exploited.
 
 We will then move on to the ```/dev``` endpoint. This endpoint shows a directory lising containing 2 files. Notes.txt seems to be the personal notes of the developer, but 
 hype_key file seems to contain hex-encoded data, in the text format. We will download this file into our local machine and decode it.
 
-Based on the filename of the key, we can guess that this key belongs to a user named ```hype```. After decoding the file, we realize that this is an RSA private key file. We will then save the file on our local machine and attempt to SSH into using the key file. However, we 
+## Exploit
+### Obtaining the SSH private key file
+Based on the filename of the key that we have downloaded on our local machine, we can guess that this key belongs to a user named ```hype```. After decoding the file, we realize that this is an RSA private key file. We will then save the file on our local machine and attempt to SSH into using the key file. However, we 
 realize that we need a passphrase to gain access to the SSH terminal. At the same time, we also realize that this file is encrypted, so we probably will have to decrypt it 
 to be able to gain access into the SSH terminal as well. 
 
@@ -88,7 +88,7 @@ to be able to gain access into the SSH terminal as well.
 └─$ ssh -i id_rsa hype@10.10.10.79                                                       1 ⚙
 Enter passphrase for key 'id_rsa':
 ```
-
+### Heartbleed exploit
 Now, we will try to scan for vulnerabilities in the SSH terminal that may possibly reveal the passphrase using Nmap
 
 ```
@@ -192,6 +192,7 @@ Received heartbeat response:
 WARNING: server returned more data than it should - server is vulnerable!
 ```
 
+### Obtaining SSH passphrase
 From the output,we realize that we have an encoded text ```$text=aGVhcnRibGVlZGJlbGlldmV0aGVoeXBlCg==}``` that seems to be base-64 encoded. We will first try to decode the text
 
 ```
@@ -200,9 +201,7 @@ From the output,we realize that we have an encoded text ```$text=aGVhcnRibGVlZGJ
 heartbleedbelievethehype
 ```
 
-## Obtaining user flag
-
-The decoded might be the passphrase for the private key. Let's try to SSH in with this passphrase.
+The decoded text might be the passphrase for the private key. Let's try to SSH in with this passphrase.
 
 ```
 ┌──(kali㉿kali)-[~/Desktop]
@@ -219,6 +218,7 @@ Last login: Fri Feb 16 14:50:29 2018 from 10.10.14.3
 hype@Valentine:~$ 
 ```
 
+### Obtaining user flag
 Now, all we have to do is to find the user.txt and obtain the flag
 
 ```
@@ -229,7 +229,7 @@ hype@Valentine:~/Desktop$ cat user.txt
 <Redacted user flag>
 ```
 
-## Obtaining root flag
+### Obtaining root flag
 
 Now, we will use linpeas to discover potential vectors of privilege escalation. From the outputt, we discover that there is a tmux session that is current running, and this process is owned by root
 
