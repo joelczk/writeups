@@ -236,6 +236,16 @@ sunny:$5$iRMbpnBv$Zh7s6D7ColnogCdiVE5Flz9vCZOMkUFxklRhhaShxv3:17636::::::
 ```
 
 ### Cracking the hash
+
+Before we start cracking the hash, let's try to identify the hash type. The hash was identified to be SHA-256 Crypt, and the hashcat mode for this is 7400
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ hashid -m '$5$Ebkn8jlK$i6SSPa0.u7Gd.0oJOT4T421N2OvsfXqAT1vCoYUOigB'             2 ⚙
+Analyzing '$5$Ebkn8jlK$i6SSPa0.u7Gd.0oJOT4T421N2OvsfXqAT1vCoYUOigB'
+[+] SHA-256 Crypt [Hashcat Mode: 7400]
+
+```
 ### Obtaining reverse shell
 ### Obtaining user flag
 ### Obtaining root flag
