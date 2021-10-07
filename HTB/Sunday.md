@@ -308,4 +308,5 @@ On the local machine, we will create a reverse shell that writes the contents of
 listening on [any] 4000 ...
 connect to [10.10.16.4] from (UNKNOWN) [10.10.10.76] 60822
 ```
-### Obtaining root flag
+## Afterthoughts
+This machine is very LAGGY which makes it hard to bruteforce your SSH entry, Make your own list of possible passwords instead (HINT: MACHINE NAME!!!)
