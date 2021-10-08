@@ -132,11 +132,6 @@ The exploit code had quite a number of bugs and was unable to run properly on my
 # Google Dork: "Powered by Magento"
 # Date: 08/18/2015
 # Exploit Author: @Ebrietas0 || http://ebrietas0.blogspot.com
-# Vendor Homepage: http://magento.com/
-# Software Link: https://www.magentocommerce.com/download
-# Version: 1.9.0.1 and below
-# Tested on: Ubuntu 15
-# CVE : none
 # Modified version of rce
 
 from hashlib import md5
