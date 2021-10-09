@@ -114,6 +114,9 @@ function check_file_type($file) {
 }
 ```
 ## Exploit
+From the source code analysis, we can see that the magic bytes in the file are being checked in the ```file_mime_type``` function. This tells us that we can upload other file extensions by simply bypassing the magic headers or introducing a shell in the metadata. For this exploit, we will bypass the magic headers instead
 ### Obtaining reverse shell
 ### Obtaining user flag
 ### Obtaining root flag
+
+## Post-exploitation
