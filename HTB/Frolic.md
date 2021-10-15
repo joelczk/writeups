@@ -13,7 +13,17 @@ Before we start, let's first add the IP address and the host to our ```/etc/host
 Firstly, we will use masscan to identify the open ports
 
 ```
-{masscan output}
+┌──(kali㉿kali)-[~]
+└─$ sudo masscan -p1-65535,U:1-65535 10.10.10.111 --rate=1000 -e tun0
+Starting masscan 1.3.2 (http://bit.ly/14GZzcT) at 2021-10-02 01:05:16 GMT
+Initiating SYN Stealth Scan
+Scanning 1 hosts [131070 ports/host]
+Discovered open port 22/tcp on 10.10.10.111
+Discovered open port 137/tcp on 10.10.10.111
+Discovered open port 139/tcp on 10.10.10.111
+Discovered open port 445/tcp on 10.10.10.111
+Discovered open port 1880/tcp on 10.10.10.111
+Discovered open port 9999/tcp on 10.10.10.111
 ```
 
 ### Nmap
