@@ -27,18 +27,17 @@ Discovered open port 9999/tcp on 10.10.10.111
 ```
 
 ### Nmap
-We will then use the open ports obtained from masscan to run a scan using nmap to enumerate the services operating behind each port
+We will then use the open ports obtained from masscan to run a scan using nmap to enumerate the services operating behind each port. From the output, there are 2 ports with web services, namely port 1880 and port 9999.
 
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
-| {Port}	| {Service} | {Version} | Open |
+| 22	| SSH | OpenSSH 7.2p2 Ubuntu 4ubuntu2.4 (Ubuntu Linux; protocol 2.0) | Open |
+| 139	| netbios-ssn | Samba smbd 3.X - 4.X | Open |
+| 445	| netbios-ssn | Samba smbd 4.3.11-Ubuntu (workgroup: WORKGROUP) | Open |
+| 1880	| http | Node.js (Express middleware) | Open |
+| 9999	| http | nginx 1.10.3 (Ubuntu) | Open |
 
-Afterwwards, we will use Nmap to scan for potential vulnerabilties on each of the ports
-
-```
-{Nmap output}
-```
-### Sslyze
+Afterwwards, we will use Nmap to scan for potential vulnerabilties on each of the ports, but the main exploits are DDOS, which is not very useful in our case.
 
 ### Gobuster
 We will then use Gobuster to find the endpoints that are accessible from http://frolic.htb
