@@ -58,13 +58,6 @@ http://frolic.htb:9999/backup               (Status: 301) [Size: 194] [--> http:
 http://frolic.htb:9999/loop                 (Status: 301) [Size: 194] [--> http://frolic.htb:9999/loop/]
 http://frolic.htb:1880/icons                (Status: 401) [Size: 12]
 ```
-We will also tried to find virtual hosts on http://sense.htb, but we were unable to find any vhosts.
-
-Next, we will try to use Gobuster to do an enumeration for common files extensions such as .js,.txt,.php and .html.
-
-```
-{Gobuster output}
-```
 
 ### Ferox Buster
 ```
@@ -136,7 +129,6 @@ Apart from that, http://frolic.htb:9999/backup/, gives us 3 directories/file nam
 ```
 password - imnothuman
 ```
-## Exploit
 
 Using the username and password that we have obtained from http://frolic.htb/admin/js/login.js, we will now login to http:/frolic.htb/admin/. Upon logging in, we are presented with a long text of weird characters
 ```
@@ -238,7 +230,19 @@ LS4gPCsrK1sgLT4tLS0gPF0+LS0gLS0tLS4gPCsrKysgWy0+KysgKys8XT4KKysuLjwgCg==" | base
 ++..<
 ```
 
-The decoded text is another esoteric programming language known as brinfuck. Decoding this will give us a test ```idkwhatispass```, which seems like some sort of password.
+The decoded text is another esoteric programming language known as brinfuck. Decoding this will give us a test ```idkwhatispass```, which seems like some sort of password. However, trying this on SSH server, FTP server and the web servers did not yield any results.
+
+However, furthur Gobuster enumeration of the endpoints ```/dev``` and ```/test``` produced furthur results.
+
+```
+http://frolic.htb:9999/dev/test                
+http://frolic.htb:9999/dev/backup              
+```
+
+Visitng http://frolic.htb:9999/dev/test, we are able to download an ASCII file. However, this file is useless as it did not contain any information. However, visiting http://frolic.htb:9999/dev/backup, we are able to find a new endpoint /playsms
+
+Visiting http:/frolic.htb:9999/playsms, we are greeted with a login screen to playSMS, which we realize that we can login with the admin:idkwhatispass.
+## Exploit
 ### Obtaining reverse shell
 ### Obtaining user flag
 ### Obtaining root flag
