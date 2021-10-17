@@ -339,6 +339,9 @@ Stopped reason: SIGSEGV
 0x62413762 in ?? ()
 ```
 
+Next, we have to obtain the base address, the address of exit, address of system and address of /bin/sh on the reverse shell (NOTE: We cannot find them on the local machine as the addresses are different)
+
+![offset](https://github.com/joelczk/writeups/blob/main/HTB/Images/Frolic/offset.PNG)
 Lastly, all we have to do is to develop the exploit code
 
 ```python
