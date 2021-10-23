@@ -352,4 +352,7 @@ root@Postman:/usr/share/webmin/package-updates#
 ```
 
 ## Post-Exploitation
-CVE-2019-15107
+### CVE-2019-15107
+During the exploitation phase, we also realize that https://Postman:10000 might be vulnerable to CVE-2019-15107, but this could not be exploited as password changing is not enabled on this site
+
+![Password changing not enabled](https://github.com/joelczk/writeups/blob/main/HTB/Images/Postman/password_changing.PNG)
