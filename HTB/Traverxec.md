@@ -237,3 +237,5 @@ nostromo_1.9.6-1.deb  root.txt
 <Redacted root flag>
 # 
 ```
+
+## Post-exploitation
