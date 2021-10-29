@@ -239,3 +239,12 @@ nostromo_1.9.6-1.deb  root.txt
 ```
 
 ## Post-exploitation
+### CVE-2019-16278
+CVE-2019-16278 was an RCE resulting from directory traversal. http://traverxec.htb is vulnerable to directory traversal by adding a %0d between the trailing dots. (Refer to image below for the difference)
+
+![Directory traversal without %0d](https://github.com/joelczk/writeups/blob/main/HTB/Images/Traverxec/directory_traversal_1.png)
+
+![Directory traversal adding %0d](https://github.com/joelczk/writeups/blob/main/HTB/Images/Traverxec/directory_traversal_2.png)
+
+The payload can be furthur modified to execute ```echo``` commands.
+![Echo commands](https://github.com/joelczk/writeups/blob/main/HTB/Images/Traverxec/echo_commands.png)
