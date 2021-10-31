@@ -134,7 +134,6 @@ id
 uid=33(www-data) gid=33(www-data) groups=33(www-data)
 www-data@openadmin:/opt/ona/www$ 
 ```
-### Obtaining user flag
 
 We realize that there are 2 users on this machine, namely Jimmy and Joanna. However, we do not have the permissions to view the files owned by the 2 users.
 
