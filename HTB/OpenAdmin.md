@@ -390,5 +390,3 @@ root@openadmin:/home/joanna# cat /root/root.txt                                 
 <Redacted root flag>
 root@openadmin:/home/joanna#
 ```
-
-## Beyond Exploitation
