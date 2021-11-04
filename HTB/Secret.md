@@ -33,12 +33,6 @@ this machine uses Express middleware which signifies that the backend of this ma
 | 80	| HTTP | nginx 1.18.0 (Ubuntu) | Open |
 | 3000	| HTTP | Node.js (Express middleware) | Open |
 
-Afterwwards, we will use Nmap to scan for potential vulnerabilties on each of the ports
-
-```
-{Nmap output}
-```
-
 ### Gobuster
 We will then use Gobuster to find the endpoints that are accessible from http://secret.htb on port 80. At the same time, we also realize that endpoints on port 3000 
 is the same as port 80.
