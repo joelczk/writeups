@@ -94,6 +94,14 @@ Bludit 3.9.2 - Authentication Bruteforce Bypass (Metasploi | php/webapps/49037.r
 Bludit 3.9.2 - Directory Traversal                         | multiple/webapps/48701.txt
 ----------------------------------------------------------- ---------------------------------
 ```
+
+Let's try to bruteforce the credentials using (CVE-2019-17240)[https://nvd.nist.gov/vuln/detail/CVE-2019-17240]. Let's start by creating a custom wordlist using cewl
+
+```
+┌──(HTB)─(kali㉿kali)-[~/Desktop]
+└─$ cewl http://blunder.htb > wordlist
+```
+
 ## Exploit
 ### Obtaining reverse shell
 ### Obtaining user flag
