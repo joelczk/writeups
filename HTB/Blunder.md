@@ -319,7 +319,7 @@ Next up, even though the file type is invalid, the server still saves the file i
 
 ![htaccess file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Blundit/htaccess.png)
 
-In the htaccess file that was overwritten above, we are using ```RewriteEngine off``` to prevent any runtime overwriting of our configuration so that our configuration does not change during runtime. The ```Addtype application/x-httpd-php .png``` would then execute all our .png files as .php which would allow us to execute the php code that we have embedded into the .png image earlier.
+In the htaccess file that was overwritten above, we are using ```RewriteEngine off``` to prevent any runtime overwriting of our configuration so that our configuration does not change during runtime. The ```Addtype application/x-httpd-php .png``` would then execute all our .png files as php files which would allow us to execute the php code that we have embedded into the .png image earlier.
 
 Last but not least, all we have to do is to visit http://blunder.htb/bl-content/tmp/blut.png to trigger the RCE.
 
