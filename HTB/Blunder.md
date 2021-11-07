@@ -312,8 +312,30 @@ root@blunder:/home/hugo#
 ## Post-Exploitation
 ### Directory-Traversal
 ### CVE-2019-16113
+Firstly, there is a lack of input validation in the upload of images, as well as a directory traversal vulnerability that allows the image to be saved to ../../tmp folder in the server.
+![Arbitary file uploads](https://github.com/joelczk/writeups/blob/main/HTB/Images/Blundit/shell_upload.png)
+
+Next up, even though the file type is invalid, the server still saves the file into the specified directory (We can specify the directory using the directory traversal vulnerability mentioned above). This would allow us to replace the .htaccess files with our own configurations. 
+
+![htaccess file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Blundit/htaccess.png)
+
+In the htaccess file that was overwritten above, we are using ```RewriteEngine off``` to prevent any runtime overwriting of our configuration so that our configuration does not change during runtime. The ```Addtype application/x-httpd-php .png``` would then execute all our .png files as .php which would allow us to execute the php code that we have embedded into the .png image earlier.
+
+Last but not least, all we have to do is to visit http://blunder.htb/bl-content/tmp/blut.png to trigger the RCE.
+
+![Trigger RCE](https://github.com/joelczk/writeups/blob/main/HTB/Images/Blundit/rce.png)
+
 ### CVE-2019-14287
-CVE-2019-14287 is a privilege escalation vulnerability affecting sudo versions prior to 1.8.28. In this case, the sudo version is 1.8.25p1 which is defintely earlier than 1.8.28
-and so it is vulnerable to this CVE.
+CVE-2019-14287 is a privilege escalation vulnerability affecting sudo versions prior to 1.8.28. In this case, the sudo version is 1.8.25p1 which is defintely earlier than 1.8.28 and so it is vulnerable to this CVE.
 
 When running as ```sudo```, we can execute ```sudo -u [user]``` to specify the user that we want to run as. In this vulnerability, ```sudo``` does not validate if the user ID specified using the -u flag actually exists and executes the command using an arbitrary user id with root privileges. If the arbitrary user id does not exist, the user id will default to 0, which is the root user and therefore allowing commands to be executed with root privileges
+
+```
+hugo@blunder:~$ sudo -u#-1 /bin/bash
+sudo -u#-1 /bin/bash
+Password: Password120
+
+root@blunder:/home/hugo# id
+id
+uid=0(root) gid=1001(hugo) groups=1001(hugo)
+```
