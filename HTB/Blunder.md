@@ -98,7 +98,7 @@ Bludit 3.9.2 - Directory Traversal                         | multiple/webapps/48
 ## Exploit
 
 ### Bruteforcing credentials
-Let's try to bruteforce the credentials using (CVE-2019-17240)[https://nvd.nist.gov/vuln/detail/CVE-2019-17240]. Let's start by creating a custom wordlist using cewl
+Let's try to bruteforce the credentials using [CVE-2019-17240](https://nvd.nist.gov/vuln/detail/CVE-2019-17240). Let's start by creating a custom wordlist using cewl
 
 ```
 ┌──(HTB)─(kali㉿kali)-[~/Desktop]
@@ -117,7 +117,7 @@ Next, we will write a script to check for the correct password using the wordlis
 ```
 
 ### Obtaining reverse shell
-Logging into the bludit site with fergus:RolandDeschain, we realize that Bludit 3.9.2 is also vulnerable to (CVE-2019-16113)[https://github.com/bludit/bludit/issues/1081], which is a code execution vulnerability. Using that we execute the command to spawn a reverse shell.
+Logging into the bludit site with fergus:RolandDeschain, we realize that Bludit 3.9.2 is also vulnerable to [CVE-2019-16113](https://github.com/bludit/bludit/issues/1081), which is a code execution vulnerability. Using that we execute the command to spawn a reverse shell.
 
 ```
 ┌──(kali㉿kali)-[~/Desktop]
