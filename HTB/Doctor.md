@@ -108,9 +108,24 @@ https://10.10.10.209:8089/v2                   (Status: 200) [Size: 2178]
 https://10.10.10.209:8089/v3                   (Status: 200) [Size: 2178]
 ```
 
-Lastly, we will use Gobuster to find the endpoints of http://doctors.htb.
+Lastly, we will use Gobuster to find the endpoints of http://doctors.htb. For this site, there are a few interesting endpoints such as /archive and /login, which we will discover in depth later.
+
+```
+http://doctors.htb/login                (Status: 200) [Size: 4204]
+http://doctors.htb/archive              (Status: 200) [Size: 101]
+http://doctors.htb/home                 (Status: 302) [Size: 245] [--> http://doctors.htb/login?next=%2Fhome]
+http://doctors.htb/register             (Status: 200) [Size: 4493]
+http://doctors.htb/account              (Status: 302) [Size: 251] [--> http://doctors.htb/login?next=%2Faccount]
+http://doctors.htb/logout               (Status: 302) [Size: 217] [--> http://doctors.htb/home]
+http://doctors.htb/reset_password       (Status: 200) [Size: 3493]
+http://doctors.htb/server-status        (Status: 403) [Size: 276]
+```
 
 ### Web-content discovery
+
+Exploring http://doctors.htb/register, we discover a sign up page to register a user to login to the site. However, we realize that the user will only be valid for 20mins. 
+
+![Sign up page](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/signup.png)
 ## Exploit
 ### Obtaining reverse shell
 ### Obtaining user flag
