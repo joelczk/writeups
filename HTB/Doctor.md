@@ -298,3 +298,22 @@ ls
 flaskblog  run.py
 ```
 ### Splunk Universal Forwarder Agent Exploit
+
+The Splunk Universal Forwarder Agent allows authenticated remote users to send commands/scripts to agents via the Splunk API. Howeverm the Universal Forwarder agent does not validate whether the connections are coming from a valid Splunk Enterprise server, nor does it validate if the code is signed/coming from the valid Splunk Enterprise server. This would mean that any attacker who has valid credentials to the Splunk Universal Forwarder Agent will be able to upload malicious Splunk bundle that can execute code
+
+Firstly, we will have to create a malicious bundle on our local machine. This can be done by first creating a create a file with the malicious payload, and a configuration file for the payload. Afterwards, we will tar the payload file and the configuration file.
+
+```
+## Configuration file
+[script://$SPLUNK_HOME/etc/apps/_PWN_APP_/bin/pwn.bat]
+disabled = false
+index = default
+interval = 60.0
+sourcetype = test
+```
+
+![Creating malicious splunk bundle](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/splunk_bundle_tar.png)
+
+Afterwards, we will host the malicious bundle on our local machine, and send a post request to the /services/app/local endpoint with Splunk's authenticated API. Since there is a lack of validation of where the url is coming from, this will allow us to install the malicious bundle on Splunk and the rce will be exploited
+
+![Exploiting malicious bundle](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/exploitation.png)
