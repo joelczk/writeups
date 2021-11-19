@@ -165,7 +165,17 @@ Next, we have to obtain the value of the output from _sg.vantage.uncrackable1.a.
 var logicClass = Java.use("sg.vantagepoint.uncrackable1.a");
 var value = logicClass.b("8d127684cbc37c17616d806cf50473cc");
 ```
+Afterwards, we will write a function to convert the bytes back to string 
 
+```
+function bytestostring(buffer) {
+    var results = "";
+    for (var i = 0; i < buffer.length; i ++) {
+        results += String.fromCharCode(buffer[i]);
+    }
+    return results;
+}
+```
 Lastly, we will supply the Base64 decoded value and the output obtained in the previous 2 steps to _sg.vantagepoint.a.a.a_ to obtain the secret key.
 
 ```
