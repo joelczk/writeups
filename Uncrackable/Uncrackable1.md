@@ -121,3 +121,94 @@ Java.perform(function(){
 To execute the script in Frida, we will use ```frida -U --no-pause -l avoidRootDetection.js -f owasp.mstg.uncrackable1```. The ```--no-pause``` is used to allow us to continue the execution in the mobile application after we bypass the root detection.
 
 ![Bypassing root detection](https://github.com/joelczk/writeups/blob/main/Uncrackable/Images/Uncrackable1/rootdetection.png)
+
+
+### Finding secret string
+Tracing through the code, we realize that the main logic for extracting the secret key can be found at _sg.vantagepoint.uncrackable1.a_. From there the function a(), we can know that the secret key is our _bArr_ variable
+
+```
+public class a {
+    public static boolean a(String str) {
+        byte[] bArr;
+        byte[] bArr2 = new byte[0];
+        try {
+            bArr = sg.vantagepoint.a.a.a(b("8d127684cbc37c17616d806cf50473cc"), Base64.decode("5UJiFctbmgbDoLXmpL12mkno8HT4Lv8dlat8FxR2GOc=", 0));
+        } catch (Exception e) {
+            Log.d("CodeCheck", "AES error:" + e.getMessage());
+            bArr = bArr2;
+        }
+        return str.equals(new String(bArr));
+    }
+
+    public static byte[] b(String str) {
+        int length = str.length();
+        byte[] bArr = new byte[(length / 2)];
+        for (int i = 0; i < length; i += 2) {
+            bArr[i / 2] = (byte) ((Character.digit(str.charAt(i), 16) << 4) + Character.digit(str.charAt(i + 1), 16));
+        }
+        return bArr;
+    }
+}
+```
+
+First, let us obtain the Base64 decoded value of 5UJiFctbmgbDoLXmpL12mkno8HT4Lv8dlat8FxR2GOc= by modifying the script.
+
+```
+var b64 = Java.use("android.util.Base64");
+var b64Value = b64.decode("5UJiFctbmgbDoLXmpL12mkno8HT4Lv8dlat8FxR2GOc=", 0);
+console.log("[+] Obtained Base64 decoded value!");
+```
+
+Next, we have to obtain the value of the output from _sg.vantage.uncrackable1.a.b_
+
+```
+var logicClass = Java.use("sg.vantagepoint.uncrackable1.a");
+var value = logicClass.b("8d127684cbc37c17616d806cf50473cc");
+```
+
+Lastly, we will supply the Base64 decoded value and the output obtained in the previous 2 steps to _sg.vantagepoint.a.a.a_ to obtain the secret key.
+
+```
+var decryptClass = Java.use("sg.vantagepoint.a.a");
+var secretkey = decryptClass.a(value, b64Value);
+```
+
+![Obtaining the secret](https://github.com/joelczk/writeups/blob/main/Uncrackable/Images/Uncrackable1/secret.png)
+
+This is the final exploit script that is used:
+```
+function bytestostring(buffer) {
+    var results = "";
+    for (var i = 0; i < buffer.length; i ++) {
+        results += String.fromCharCode(buffer[i]);
+    }
+    return results;
+}
+
+Java.perform(function(){
+    var decryptClass = Java.use("sg.vantagepoint.a.a");
+    var logicClass = Java.use("sg.vantagepoint.uncrackable1.a");
+    var b64 = Java.use("android.util.Base64");
+    var rootClass = Java.use("sg.vantagepoint.a.c");
+    rootClass.a.implementation = function(v) {
+        return false;
+    }
+    
+    rootClass.b.implementation = function(v) {
+        return false;
+    }
+    
+    rootClass.c.implementation = function(v) {
+        return false;
+    };
+    console.log("[*]Root Bypass Completed");
+    var b64Value = b64.decode("5UJiFctbmgbDoLXmpL12mkno8HT4Lv8dlat8FxR2GOc=", 0);
+    console.log("[+] Obtained Base64 decoded value!");
+    var value = logicClass.b("8d127684cbc37c17616d806cf50473cc");
+    console.log("[+] Obtained secret value!");
+    var secretkey = decryptClass.a(value, b64Value);
+    console.log("--------------------------------");
+    console.log(bytestostring(secretkey));
+    console.log("--------------------------------");
+})
+```
