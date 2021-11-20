@@ -69,14 +69,20 @@ http://10.10.10.194:8080/manager              (Status: 302) [Size: 0] [--> /mana
 Visiting http://tabby.htb:80, we are able to find a /news.php that redirects to http://megahosting.htb/news.php?file=statement
 ![news.php page](https://github.com/joelczk/writeups/blob/main/HTB/Images/Tabby/news.png)
 
+## Exploit
+### LFI
 Capturing the request via Burp Suite, we realize that there is a file parameter that might possibly be vulnerable to LFI. Using ```../../../../etc/passwd``` worked as we are 
 able to view the file contents of /etc/passwd file. From this output alone, even though we are unable to obtain any credentials that is of any use to use, we are able to find a
 few users that might be of use to use (tomcat, lxd, ash)
 
 ![LFI Burp](https://github.com/joelczk/writeups/blob/main/HTB/Images/Tabby/lfi_burp.png)
 
-Now, let's try to find a configuration file that can leak potential credentials.
-## Exploit
+Now, let's try to find a configuration file that can leak potential credentials. Viewing http://megahosting.htb:8080, we can see that users are defined in ```/etc/tomcat9/tomcat-users.xml``` and CATALINA_HOME as well as CATALINA_BASE are defined in tomcat9. However, we were unable to obtain the tomcat-users.xml file from all of the above paths listed.
+
+Upon some research, I found this [site](https://talk.openmrs.org/t/configuring-apache-tomcat-9/323790) that tells me that the tomcat-users.xml file can be found at ```/usr/share/tomcat9/etc/tomcat-users.xml```. Using ```/usr/share/tomcat9/etc/tomcat-users.xml``` we can then exploit the LFI to view tomcat-users.xml file. From the output, we are able to obtain the credentials for the user (tomcat:$3cureP4s5w0rd123!), and also we know that this user has admin privileges and manager privileges on the tomcat interface at port 8080
+
+![tomcat-users.xml file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Tabby/tomcat_users_file.png)
+
 ### Obtaining reverse shell
 ### Obtaining user flag
 ### Obtaining root flag
