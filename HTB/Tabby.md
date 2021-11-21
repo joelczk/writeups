@@ -293,6 +293,10 @@ tabby
 mycontainer
 ```
 
+LXD (Linux daemon) and LXC (Linux Container) are similiar to docker where we can spawn containers that can be executed, without the need of a seperate kernel. LXD is Ubuntu’s container manager utilizing Linux containers.
+
+Since the user is in the lxd group, the user will be able to create new containers on the server. Because of that, the user is able to import a container image into the server and create a container from the uploaded image. Afterwhich, he will be able to map the host partition to the container. After mapping the drive, he will also be able to start the container and run /bin/sh on the container. This will then start the container but with root privileges. Since the user has mapped the host partition to the container previously, the user will be able to view/extract the files on host partition using the container. Apart from that, since the container is started with root privileges, the user will also be able to view/extract restricted files accessible only to root from the container itself.
+
 ### CVE-2020-9484
 This exploit failed to work on our target website mainly because index.jsp cannot be found on the website. 
 
@@ -301,4 +305,13 @@ This exploit failed to work on our target website mainly because index.jsp canno
 └─$ curl 'http://10.10.10.194:8080/index.jsp' -H 'Cookie: JSESSIONID=../../../../../usr/local/tomcat/groovy'
 
 <!doctype html><html lang="en"><head><title>HTTP Status 404 – Not Found</title><style type="text/css">body {font-family:Tahoma,Arial,sans-serif;} h1, h2, h3, b {color:white;background-color:#525D76;} h1 {font-size:22px;} h2 {font-size:16px;} h3 {font-size:14px;} p {font-size:12px;} a {color:black;} .line {height:1px;background-color:#525D76;border:none;}</style></head><body><h1>HTTP Status 404 – Not Found</h1><hr class="line" /><p><b>Type</b> Status Report</p><p><b>Message</b> &#47;index.jsp</p><p><b>Description</b> The origin server did not find a current representation for the target resource or is not willing to disclose that one exists.</p><hr class="line" /><h3>Apache Tomcat/9.0.31 (Ubuntu)</h3></body></html> 
+```
+
+### CVE-2020-1938
+This exploit failed to work because the AJP connector in Apache Tomcat failed at port 8009 is not activated, and so it is not publicly accessible.
+
+```
+┌──(HTB)─(kali㉿kali)-[~/Desktop]
+└─$ curl http://10.10.10.140:8009                                                        1 ⨯
+curl: (7) Failed to connect to 10.10.10.140 port 8009: No route to host
 ```
