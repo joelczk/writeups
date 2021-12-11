@@ -323,7 +323,7 @@ func helpCommand(u *user, _ []string) {
 
 Navigating to the [github repo](https://github.com/quackduck/devzat), we also see that we are required to self-generate an id_rsa file to upload onto our SSH server.
 
-![github repo](./Images/github_repo.png)
+![github repo](https://github.com/joelczk/writeups/blob/main/HTB/Images/Devzat/github_repo.png)
 
 ### Adding SSH private key
 
