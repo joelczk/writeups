@@ -33,7 +33,7 @@ We will then use the open ports obtained from masscan to run a scan using nmap t
 | 1337	| waste? | NIL | Open |
 
 ### Gobuster
-We will then use Gobuster to find the endpoints that are accessible from http:/backdoor.htb
+We will then use Gobuster to find the endpoints that are accessible from http://backdoor.htb
 
 ```
 http://10.129.106.84:80/index.php            (Status: 301) [Size: 0] [--> http://10.129.106.84:80/]
