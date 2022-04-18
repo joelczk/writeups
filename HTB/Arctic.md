@@ -36,7 +36,7 @@ We will then use the open ports obtained from masscan to run a scan using nmap t
 
 Navigating to http://arctic.htb:8500, we realize that we are able to view a directory listing of the endpoints on the site.
 
-![Directory listing](./Images/dir_listing.png)
+![Directory listing](https://github.com/joelczk/writeups/blob/main/HTB/Images/Arctic/dir_listing.png)
 
 Navigating through the directory listing, we are able to find another endpoint http://http://arctic.htb:8500/CFIDE/administrator/, which is the adminstrator interface for ColdFusion 8.
 
@@ -46,7 +46,7 @@ Navigating through the directory listing, we are able to find another endpoint h
 Looking up the vulnerabilities of Cold Fusion 8, we discover that this version of Cold Fusion is vulnerable to [CVE-2010-2861](https://www.exploit-db.com/exploits/14641).
 
 Using this vulnerability, we can then visit ```http://arctic.htb:8500/CFIDE/administrator/enter.cfm?locale=..\..\..\..\..\..\..\..\ColdFusion8\lib\password.properties%00en```, and we will then be able to obtain the password hash.
-![Directory Traversal](./Images/directory_traversal.png)
+![Directory Traversal](https://github.com/joelczk/writeups/blob/main/HTB/Images/Arctic/directory_traversal.png)
 
 Looking up the hash using the hash-identifier tool, we are able to recognize that this is posisbly a SHA-1 hash.
 
@@ -69,7 +69,7 @@ Using the password, we are then able to authenticate into http://arctic.htb:8500
 
 Firstly, we would need to first get the directory for our ```CFIDE```. To do so, we would need to navigate to Mappings under Server Settings.
 
-![Mappings](./Images/mappings.png)
+![Mappings](https://github.com/joelczk/writeups/blob/main/HTB/Images/Arctic/mappings.png)
 
 Next, what we have to do is to create a scheduled task. To do that, we will go to Debugging & Loggin > Scheduled Tasks > Schedule New Task
 
@@ -91,11 +91,11 @@ Next, we will have to schedule the new task (NOTE: Remember to click ```save out
 - username : username of the adminstrator interface (```admin``` in this case)
 - password: Password of the adminstrator interface(```happyday``` in this case)
 - File : CFIDE mapping that we have obtained earlier
-![Scheduling new task](./Images/new_task.png)
+![Scheduling new task](https://github.com/joelczk/writeups/blob/main/HTB/Images/Arctic/new_task.png)
 
 We will then proceed to click on the leftmost button to start the scheduled task. This will then do a GET request to our python webserver to download the shell.jsp file and download it to our C:\ColdFusion8\wwwroot\CFIDE directory which is accessible at http://arctic.htb:8500/CFIDE/
 
-![](./Images/run_task.png)
+![Obtaining new task](https://github.com/joelczk/writeups/blob/main/HTB/Images/Arctic/new_task.png)
 
 Lastly we will do a curl request to http://arctic.htb:8500/CFIDE/shell.jsp to spawn the reverse shell.
 
@@ -173,7 +173,7 @@ For this vulnerability, we are making use of the ability to upload a JSP script 
 
 Afterwhich, we just have to browse to the reverse shell payload in order to execute the reverse shell.
 
-![Reverse shell payload](./Images/reverse_shell.png)
+![Reverse shell payload](https://github.com/joelczk/writeups/blob/main/HTB/Images/Arctic/reverse_shell.png)
 
 
 ## Post-Exploiation
