@@ -75,7 +75,7 @@ Visiting http://dev01.artcorp.htb/index.php, we are able to find a link that red
 
 Uploading an image onto the website, we realize that the webpage displays the metadata of the image that we have uploaded.
 
-![Metadata of uploaded image](./Images/meta_upload.png)
+![Metadata of uploaded image](https://github.com/joelczk/writeups/blob/main/HTB/Images/Meta/meta_upload.png)
 
 ## Exploit
 ### Exploiting exiftool (CVE-2021-22204)
@@ -124,7 +124,7 @@ subprocess.run(['exiftool', '-config', 'configfile', '-HasselbladExif<=exploit.d
 
 Next, we will run the python exploit code and this will create a malicious jpg image. Afterwards, we will upload the image onto http://dev01.artcorp.htb/metaview/index.php and we will be able to obtain a reverse shell.
 
-![Obtaining reverse shell](./Images/reverse_shell.png)
+![Obtaining reverse shell](https://github.com/joelczk/writeups/blob/main/HTB/Images/Meta/reverse_shell.png)
 
 ### Privilege Escalation to Thomas
 We realize that the user that we are in currently is ```www-data``` and we don't have the permissions to view the user flag in /home/thomas. 
@@ -273,7 +273,7 @@ Navigating to /home/thomas/.config, we realize that there is a config file for n
 
 To do that, we will first have to add a reverse shell payload to /home/thomas/.config/neofetch/config.conf. However, for this payload we will have to add it to the print_info() function in the config file so that the reverse shell payload will be called when we execute the /usr/bin/neofetch command.
 
-![Reverse shell for neofetch](./Images/reverse_shell_neofetch.png)
+![Reverse shell for neofetch](https://github.com/joelczk/writeups/blob/main/HTB/Images/Meta/reverse_shell_neofetch.png)
 
 Upon executing ```sudo /usr/bin/neofetch \"\"```, we will then obtain a reverse shell
 
