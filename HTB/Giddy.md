@@ -282,6 +282,8 @@ Somehow all the union based SQL Injections redirect me to error pages and I am n
 
 From the response that we have intercepted using Burp Suite, we can see that the error originates from C:\Users\jnogueira\Downloads\owasp10\1-owasp-top10-m1-injection-exercise-files\before\1-Injection\Search.aspx which seems like some sort of filtering against OWASP's TOP 10 Injections vulnerabilities.
 
+![Request Filtering](https://github.com/joelczk/writeups/blob/main/HTB/Images/Giddy/request_filtering.png)
+
 We also found another endpoint that is vulnerable, http://giddy.htb/mvc/Product.aspx?ProductSubCategoryId=1 that is vulnerable to SQL Injection as well. 
 
 ![SQL Injection in product.aspx](https://github.com/joelczk/writeups/blob/main/HTB/Images/Giddy/product_aspx_sql_injection.png)
