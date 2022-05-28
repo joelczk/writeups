@@ -9,12 +9,6 @@ Before we start, let's first add the IP address and the host to our ```/etc/host
 ```
 10.10.11.116    validation.htb
 ```
-### Masscan
-Firstly, we will use masscan to identify the open ports
-
-```
-{masscan output}
-```
 
 ### Nmap
 We will then use the open ports obtained from masscan to run a scan using nmap to enumerate the services operating behind each port
