@@ -500,3 +500,11 @@ echo "WHAT ARE YOU TRYING TO DO HOOOOOOMAN !";
 ?>
 ```
 From the code above, all it does is that it will echo the upload time if we successfully upload an image on the frontend. However, the image is actually not uploaded to our backend server.
+
+### Hardcoded auth cookie
+Another thing that we noted is that the cookies are being hardcoded in the source code itself. It is generally not a good idea to hardcode cookies into the source code. Another alternative that could be done would be to extract the cookie value from a remote database instead
+
+```
+if ($auth === "e7749d0f4b4da5d03e6e9196fd1d18f1"){
+ echo "<br><br><br>";
+```
